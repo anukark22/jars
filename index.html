@@ -343,7 +343,11 @@
     background: var(--paper); border: 1px solid var(--line-soft); border-radius: 4px;
     padding: 16px 20px; margin-bottom: 10px; max-width: 620px; margin-left: auto; margin-right: auto;
   }
+  .cover-left { flex: 1 1 220px; min-width: 0; }
   .cover-name { font-family: var(--font-display); font-size: 1.2rem; font-weight: 500; margin: 0; }
+  .cover-bar { display: flex; align-items: center; gap: 10px; margin-top: 9px; }
+  .cover-bar .progress-track { flex: 1; min-width: 0; }
+  .cover-pct { font-family: var(--font-label); font-size: 0.55rem; letter-spacing: 0.12em; color: var(--plum-faint); white-space: nowrap; }
   .cover-meta { font-size: 0.8rem; color: var(--plum-faint); }
   .cover-right { display: flex; align-items: center; gap: 12px; }
   .cover-need { font-family: var(--font-display); font-size: 1.05rem; color: var(--rose-deep); white-space: nowrap; }
@@ -1188,18 +1192,18 @@
     covers.innerHTML = list.length ? list.map(g => {
       const need = Math.max(0, g.target - g.saved);
       const canFinish = bal >= need && bal > 0;
-      // Says what the wallet covers of what's LEFT — not how full the jar is,
-      // which sits right beside it and would otherwise be easy to confuse.
-      const badge = bal <= 0 ? ''
-        : canFinish ? `<span class="cover-badge yes">wallet covers this</span>`
-        : `<span class="cover-badge partly">wallet covers ${Math.min(100, Math.floor(bal / need * 100))}%</span>`;
+      const pct = pctFor(g);
       return `<div class="cover-row">
-        <div>
+        <div class="cover-left">
           <p class="cover-name">${escapeHtml(g.name)}</p>
           <span class="cover-meta">${formatMoney(g.saved)} of ${formatMoney(g.target)} saved</span>
+          <div class="cover-bar">
+            <div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div>
+            <span class="cover-pct">${pct}%</span>
+          </div>
         </div>
         <div class="cover-right">
-          ${badge}
+          ${canFinish ? `<span class="cover-badge yes">wallet covers this</span>` : ''}
           <span class="cover-need">${formatMoney(need)} to go</span>
           <button type="button" class="btn-put" data-id="${g.id}" ${bal <= 0 ? 'disabled' : ''}>Put money in</button>
         </div>
