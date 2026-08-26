@@ -1177,19 +1177,22 @@
         : 'Every bit counts — put some toward a dream below.';
     }
 
-    // what this could cover: nearest-to-done first, so small wins surface
+    // closest to finishing first, so the small wins surface — same order as Current Focus
     const covers = document.getElementById('walletCovers');
     const rank = { high: 0, medium: 1, low: 2 };
     const list = [...open].sort((a, b) => {
-      const p = rank[a.priority || 'medium'] - rank[b.priority || 'medium'];
-      return p !== 0 ? p : (a.target - a.saved) - (b.target - b.saved);
+      const left = (a.target - a.saved) - (b.target - b.saved);
+      if (left !== 0) return left;
+      return rank[a.priority || 'medium'] - rank[b.priority || 'medium'];
     });
     covers.innerHTML = list.length ? list.map(g => {
       const need = Math.max(0, g.target - g.saved);
       const canFinish = bal >= need && bal > 0;
+      // Says what the wallet covers of what's LEFT — not how full the jar is,
+      // which sits right beside it and would otherwise be easy to confuse.
       const badge = bal <= 0 ? ''
-        : canFinish ? `<span class="cover-badge yes">covers it</span>`
-        : `<span class="cover-badge partly">${Math.min(100, Math.floor(bal / need * 100))}% of it</span>`;
+        : canFinish ? `<span class="cover-badge yes">wallet covers this</span>`
+        : `<span class="cover-badge partly">wallet covers ${Math.min(100, Math.floor(bal / need * 100))}%</span>`;
       return `<div class="cover-row">
         <div>
           <p class="cover-name">${escapeHtml(g.name)}</p>
