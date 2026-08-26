@@ -305,14 +305,6 @@
   .icon-btn:hover { background: var(--rose); border-color: var(--rose); color: var(--cream); }
   .icon-btn.delete:hover { background: var(--danger); border-color: var(--danger); color: var(--cream); }
 
-  /* ---------- Ledger ---------- */
-  .ledger { max-width: 400px; margin: 0 auto; text-align: center; }
-  .ledger-row { display: flex; justify-content: space-between; padding: 13px 0; border-bottom: 1px solid var(--line-soft); font-size: 0.88rem; }
-  .ledger-row span:first-child { font-family: var(--font-label); text-transform: uppercase; letter-spacing: 0.15em; font-size: 0.55rem; color: var(--plum-dim); }
-  .fund-editable { cursor: pointer; border-bottom: 1px dashed var(--line); color: var(--rose-deep); font-weight: 500; }
-  .fund-editable input { width: 92px; text-align: right; background: var(--paper); border: 1px solid var(--line); padding: 1px 6px; font-family: inherit; font-size: 0.88rem; color: var(--plum); }
-  .fund-delta { color: var(--rose-deep); font-weight: 500; }
-  .ledger-foot { font-family: var(--font-display); font-style: italic; font-size: 1.2rem; color: var(--mauve-deep); margin: 20px 0 0; }
 
   /* ---------- Toast ---------- */
   .toast {
@@ -599,14 +591,6 @@
     <div class="rule"><span>Current Focus</span></div>
     <div id="focusCard"></div>
 
-    <div class="rule"><span>The Ledger</span></div>
-    <div class="ledger">
-      <div class="ledger-row"><span>Total saved</span><span id="ledgerTotal"></span></div>
-      <div class="ledger-row"><span>Monthly goal</span><span class="fund-editable" id="monthlyGoalDisplay" title="Click to edit"></span></div>
-      <div class="ledger-row"><span>This month</span><span class="fund-delta" id="monthDelta"></span></div>
-      <p class="ledger-foot" id="ledgerFoot"></p>
-    </div>
-
     <div class="rule"><span>Upcoming</span></div>
     <div id="upcomingList"></div>
 
@@ -798,51 +782,9 @@
   const USER_NAME = 'Anuka';
   const STORAGE_KEY = 'dreamreel_goals';
   const FUNDING_KEY = 'dreamreel_funding_log';
-  const GOAL_KEY = 'dreamreel_monthly_goal';
   const WALLET_KEY = 'dreamreel_wallet';
   const THEME_KEY = 'dreamreel_theme';
   const WALLET_MIGRATED_KEY = 'dreamreel_wallet_v2';
-
-  const seedGoals = [
-    { id: rid(), name: 'Sony A7 IV Camera', type: 'item', priority: 'high', icon: '',
-      target: 70000, saved: 18000,
-      notes: 'Reference: https://www.sony.com/camera, saw a review here https://youtube.com/xyz that convinced me.',
-      why: 'The thing that will capture my memories.',
-      tags: [], eventDate: '2026-12-10', eventLocation: '', photo: '', checklist: [],
-      createdAt: Date.now() - 864e5 * 124 },
-    { id: rid(), name: 'MacBook Pro', type: 'item', priority: 'high', icon: '',
-      target: 120000, saved: 40000, notes: '', why: 'To build things from anywhere.',
-      tags: [], eventDate: '2027-03-01', eventLocation: '', photo: '', checklist: [],
-      createdAt: Date.now() - 864e5 * 30 },
-    { id: rid(), name: 'Dream Wardrobe', type: 'item', priority: 'medium', icon: '',
-      target: 25000, saved: 6000, notes: '', why: 'To feel like myself on the outside too.',
-      tags: [], eventDate: '', eventLocation: '', photo: '', checklist: [],
-      createdAt: Date.now() - 864e5 * 8 },
-    { id: rid(), name: 'Goa Trip', type: 'experience', priority: 'medium', icon: '',
-      target: 40000, saved: 15000, notes: 'Flight deals tracked at https://www.google.com/flights',
-      why: 'A reunion before everyone scatters again.',
-      tags: ['Friends', 'Travel', 'Food'], eventDate: '2026-11-01', eventLocation: '', photo: '', checklist: [],
-      createdAt: Date.now() - 864e5 * 40 },
-    { id: rid(), name: 'Europe Trip', type: 'experience', priority: 'low', icon: '',
-      target: 150000, saved: 20000, notes: '', why: 'The big one — no rush, just dreaming for now.',
-      tags: ['Someday', 'Travel'], eventDate: '', eventLocation: '', photo: '', checklist: [],
-      createdAt: Date.now() - 864e5 * 60 },
-    { id: rid(), name: "Friend's Birthday", type: 'celebration', priority: 'medium', icon: '',
-      target: 3000, saved: 3000, notes: '', why: 'She never lets me forget mine.',
-      tags: [], eventDate: '2026-08-30', eventLocation: '', photo: '', checklist: [],
-      createdAt: Date.now() - 864e5 * 3 },
-    { id: rid(), name: 'Dinner Reservation', type: 'celebration', priority: 'low', icon: '',
-      target: 2000, saved: 500, notes: '', why: '',
-      tags: [], eventDate: '2026-09-15', eventLocation: 'Le Ciel Rooftop', photo: '', checklist: [],
-      createdAt: Date.now() - 864e5 * 2 },
-    { id: rid(), name: 'Birthday Dinner', type: 'celebration', priority: 'high', icon: '',
-      target: 8000, saved: 5000,
-      notes: 'Venue shortlist: https://www.thevenuebook.com/listing/42 — needs deposit by next month.',
-      why: 'A night to remember, because she deserves it.',
-      tags: [], eventDate: '2026-09-12', eventLocation: 'The Grand Hall, Downtown', photo: '',
-      checklist: [ { id: rid(), text: 'Book restaurant', done: true }, { id: rid(), text: 'Buy gift', done: false } ],
-      createdAt: Date.now() - 864e5 * 5 }
-  ];
 
   function rid() { return 'g_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36); }
 
@@ -852,8 +794,12 @@
 
   function loadGoals() {
     const raw = safeGet(STORAGE_KEY);
-    if (raw) { try { return JSON.parse(raw); } catch (e) {} }
-    saveGoals(seedGoals); return seedGoals;
+    if (raw) {
+      // Never discard saved jars. If the stored value is somehow unreadable,
+      // leave it untouched rather than replacing it with anything.
+      try { return JSON.parse(raw); } catch (e) { return []; }
+    }
+    return []; // a fresh planner starts empty — no demo jars appear on their own
   }
   function saveGoals(g) { safeSet(STORAGE_KEY, JSON.stringify(g)); }
   function loadFundingLog() {
@@ -881,7 +827,6 @@
   let goals = loadGoals();
   let fundingLog = loadFundingLog();
   let walletLog = loadWallet();
-  let monthlyGoal = Number(safeGet(GOAL_KEY)) || 10000;
   let activePage = 'home';
   let pendingPhoto = '';
 
@@ -940,10 +885,6 @@
     return { pct: nx, amount: Math.max(0, Math.ceil(g.target * nx / 100) - g.saved) };
   }
   function totalSaved() { return goals.reduce((s, g) => s + (Number(g.saved) || 0), 0); }
-  function savedThisMonth() {
-    const k = new Date().toISOString().slice(0, 7);
-    return fundingLog.filter(e => e.date.slice(0, 7) === k).reduce((s, e) => s + e.amount, 0);
-  }
 
   /* ---------- theme ---------- */
   const themeBtn = document.getElementById('themeToggle');
@@ -1127,10 +1068,14 @@
     const word = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
     document.getElementById('greetingText').textContent = `${word}, ${USER_NAME}`;
 
+    // closest to reaching first — the least money still needed, then the fullest jar
     const rank = { high: 0, medium: 1, low: 2 };
     const open = goals.filter(g => g.saved < g.target).sort((a, b) => {
-      const p = rank[a.priority || 'medium'] - rank[b.priority || 'medium'];
-      return p !== 0 ? p : pctFor(b) - pctFor(a);
+      const left = (a.target - a.saved) - (b.target - b.saved);
+      if (left !== 0) return left;
+      const byPct = pctFor(b) - pctFor(a);
+      if (byPct !== 0) return byPct;
+      return rank[a.priority || 'medium'] - rank[b.priority || 'medium'];
     });
 
     document.getElementById('savingList').innerHTML = open.slice(0, 3).map(g =>
@@ -1152,8 +1097,6 @@
     } else {
       focusEl.innerHTML = emptyStateHtml('Nothing in focus yet', 'Add your first dream and it will live here.');
     }
-
-    renderLedger();
 
     const upcoming = goals.filter(g => g.eventDate && g.eventDate >= todayStr())
       .sort((a, b) => a.eventDate.localeCompare(b.eventDate)).slice(0, 5);
@@ -1194,17 +1137,6 @@
         <p class="collection-count">${items.length} ${items.length === 1 ? c.unit.replace(/e?s$/, '') : c.unit}</p>
       </div>`;
     }).join('');
-  }
-
-  function renderLedger() {
-    document.getElementById('ledgerTotal').textContent = formatMoney(totalSaved());
-    document.getElementById('monthlyGoalDisplay').textContent = formatMoney(monthlyGoal);
-    const d = savedThisMonth();
-    document.getElementById('monthDelta').textContent = (d > 0 ? '+' : '') + formatMoney(d);
-    const closer = goals.filter(g => g.saved > 0 && g.saved < g.target).length;
-    document.getElementById('ledgerFoot').textContent = closer
-      ? `${closer} dream${closer === 1 ? '' : 's'} getting closer`
-      : 'every collection starts somewhere';
   }
 
   function monthlyReflection() {
@@ -1489,25 +1421,6 @@
   document.getElementById('collections').addEventListener('click', e => {
     const c = e.target.closest('.collection');
     if (c) showPage(c.dataset.type === 'item' ? 'priority' : 'events');
-  });
-
-  document.getElementById('monthlyGoalDisplay').addEventListener('click', function () {
-    if (this.querySelector('input')) return;
-    const cur = monthlyGoal;
-    this.innerHTML = `<input type="number" min="0" step="100" value="${cur}">`;
-    const input = this.querySelector('input');
-    input.focus(); input.select();
-    const commit = () => {
-      const v = parseFloat(input.value);
-      monthlyGoal = (!isNaN(v) && v >= 0) ? v : cur;
-      safeSet(GOAL_KEY, String(monthlyGoal));
-      renderLedger();
-    };
-    input.addEventListener('blur', commit);
-    input.addEventListener('keydown', e => {
-      if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
-      if (e.key === 'Escape') { input.value = cur; input.blur(); }
-    });
   });
 
   /* ---------- delete ---------- */

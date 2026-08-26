@@ -11,3 +11,5 @@ Desktop.ini
 
 # Local Claude Code state (keep launch.json, which is shared dev config)
 .claude/settings.local.json
+
+.vercel
