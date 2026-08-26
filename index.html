@@ -270,6 +270,10 @@
   .stamp-almost { color: var(--rose); }
   .stamp-slow { color: var(--mauve-deep); }
   .milestone-note { font-size: 0.76rem; color: var(--mauve-deep); margin: 0; }
+  .pace-note {
+    font-family: var(--font-display); font-style: italic; font-size: 1.02rem;
+    color: var(--rose-deep); margin: 0; line-height: 1.4;
+  }
   .tag-row { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
   .chip { font-family: var(--font-label); font-size: 0.52rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.1em; padding: 3px 11px; background: var(--cream-deep); border: 1px solid var(--line-soft); border-radius: 999px; color: var(--plum-dim); }
   .notes { font-size: 0.83rem; color: var(--plum-dim); line-height: 1.6; word-break: break-word; white-space: pre-wrap; text-align: left; }
@@ -859,7 +863,13 @@
   function photoFor(g) { return g.photo || imageUrlsIn(g.notes)[0] || ''; }
 
   function formatMoney(n) { return '₹' + Math.round(Number(n) || 0).toLocaleString('en-IN'); }
-  function todayStr() { return new Date().toISOString().slice(0, 10); }
+  // Local date, not UTC. toISOString() would roll back a day for anyone east
+  // of Greenwich in the early hours, mis-marking "today" on the calendar and
+  // stamping entries with yesterday's date.
+  function todayStr() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
   function fullDate(s) { const d = new Date(s + 'T00:00:00'); return isNaN(d) ? '' : d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }); }
   function monthLabel(s) { const d = new Date(s + 'T00:00:00'); return isNaN(d) ? '' : d.toLocaleDateString(undefined, { month: 'long', year: 'numeric' }); }
   function dayNum(s) { const d = new Date(s + 'T00:00:00'); return isNaN(d) ? '' : d.getDate(); }
@@ -929,6 +939,30 @@
     }
   }
 
+  // What you'd need to set aside each month to have a jar full by its date.
+  // Falls back to a shorter unit when the date is close, since "per month"
+  // stops meaning anything inside a few weeks.
+  function paceNote(g) {
+    if (!g.eventDate) return '';
+    const remaining = Math.max(0, g.target - g.saved);
+    if (remaining <= 0) return '';
+    const due = new Date(g.eventDate + 'T00:00:00');
+    if (isNaN(due)) return '';
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const days = Math.round((due - today) / 864e5);
+
+    if (days < 0) return `Date passed — ${formatMoney(remaining)} still to go`;
+    if (days === 0) return `Due today — ${formatMoney(remaining)} still to go`;
+    if (days <= 14) return `${formatMoney(remaining)} needed in ${days} day${days === 1 ? '' : 's'}`;
+    if (days <= 45) {
+      const perWeek = Math.ceil(remaining / (days / 7));
+      return `${formatMoney(perWeek)} a week to be ready in time`;
+    }
+    const perMonth = Math.ceil(remaining / (days / 30.44));
+    const by = due.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+    return `${formatMoney(perMonth)} a month to be ready by ${by}`;
+  }
+
   /* ---------- card ---------- */
   function checklistHtml(g) {
     const items = g.checklist || [];
@@ -967,6 +1001,7 @@
           <span class="stamp stamp-${stamp.key}">${stamp.text}</span>
         </div>
         ${ms ? `<p class="milestone-note">${formatMoney(ms.amount)} more to reach ${ms.pct}%</p>` : ''}
+        ${paceNote(g) ? `<p class="pace-note">${escapeHtml(paceNote(g))}</p>` : ''}
         ${g.tags && g.tags.length ? `<div class="tag-row">${g.tags.map(t => `<span class="chip">${escapeHtml(t)}</span>`).join('')}</div>` : ''}
         ${g.notes ? `<div class="notes">${linkify(g.notes)}</div>` : ''}
         ${extras.length ? `<div class="link-images">${extras.map(u => `<a href="${escapeHtml(u)}" target="_blank" rel="noopener noreferrer" class="link-image"><img src="${escapeHtml(u)}" alt="" loading="lazy" onerror="this.closest('.link-image').remove()"></a>`).join('')}</div>` : ''}
@@ -1140,7 +1175,7 @@
 
   function monthlyReflection() {
     const now = new Date();
-    const es = fundingLog.filter(e => e.date.slice(0, 7) === now.toISOString().slice(0, 7));
+    const es = fundingLog.filter(e => e.date.slice(0, 7) === todayStr().slice(0, 7));
     if (!es.length) return 'This month is just beginning — every rupee moves you closer.';
     const total = es.reduce((s, e) => s + e.amount, 0);
     const by = {}; es.forEach(e => { by[e.goalName] = (by[e.goalName] || 0) + e.amount; });
