@@ -2,7 +2,7 @@
 
 A soft, romantic savings planner — a single self-contained HTML file, no build step and no dependencies.
 
-Open `dreamreel.html` in a browser and it just runs. Everything is stored locally in your browser.
+Open `index.html` in a browser and it just runs. Everything is stored locally in your browser.
 
 ## What it does
 
@@ -32,5 +32,5 @@ Putting money into a jar takes it out of your wallet, whether you use the card's
 
 | File | |
 | --- | --- |
-| `dreamreel.html` | The whole app |
+| `index.html` | The whole app |
 | `.claude/launch.json` | Local dev-server config, for previewing during development |
