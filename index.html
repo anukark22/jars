@@ -473,6 +473,15 @@
     padding: 36px; animation: modalPop 0.3s ease; box-shadow: 0 24px 60px var(--shadow-lift);
   }
   .modal-title { font-family: var(--font-display); font-size: 1.9rem; margin: 6px 0 26px; font-weight: 500; }
+  .modal-put { max-width: 400px; }
+  .modal-put .modal-title em { font-family: var(--font-fancy); font-style: italic; color: var(--rose-deep); }
+  .put-meta { margin: -12px 0 22px; padding-bottom: 16px; border-bottom: 1px solid var(--line-soft); }
+  .put-meta span { display: flex; justify-content: space-between; padding: 4px 0; }
+  .put-meta i { font-family: var(--font-label); font-style: normal; text-transform: uppercase; letter-spacing: 0.13em; font-size: 0.52rem; color: var(--plum-faint); }
+  .put-meta b { font-family: var(--font-display); font-weight: 500; font-size: 1rem; color: var(--plum-dim); }
+  .put-max { margin-top: 8px; }
+  .put-max:hover { border-color: var(--rose); color: var(--rose-deep); }
+
   .modal-confirm { max-width: 380px; text-align: center; }
   .modal-confirm .modal-actions { justify-content: center; }
   .confirm-text { color: var(--plum-dim); font-size: 0.9rem; margin: 0; line-height: 1.7; }
@@ -728,6 +737,28 @@
       <div class="modal-actions">
         <button type="button" class="btn-ghost" id="cancelAdd">Cancel</button>
         <button type="submit" class="btn-primary" id="saveDreamBtn">Save Dream</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-overlay" id="putOverlay">
+  <div class="modal modal-put">
+    <p class="label">From your wallet</p>
+    <h2 class="modal-title">How much toward <em id="putJarName"></em>?</h2>
+    <div class="put-meta">
+      <span><i>Available</i><b id="putAvailable"></b></span>
+      <span><i>Still needed</i><b id="putNeeded"></b></span>
+    </div>
+    <form id="putForm">
+      <div class="field">
+        <label for="putAmount">Amount (₹)</label>
+        <input type="number" id="putAmount" min="0" step="0.01" required>
+        <button type="button" class="btn-ghost-sm put-max" id="putMaxBtn"></button>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-ghost" id="putCancel">Cancel</button>
+        <button type="submit" class="btn-primary">Put it in</button>
       </div>
     </form>
   </div>
@@ -1201,14 +1232,59 @@
     renderWallet();
   }
 
-  // move money out of the wallet and into a dream, in one step
+  // Ask how much before moving anything.
+  let pendingPutId = null;
+  const putOverlay = document.getElementById('putOverlay');
+
   function putTowardDream(id) {
     const g = goals.find(x => x.id === id);
     if (!g) return;
     const bal = walletBalance();
     const need = Math.max(0, g.target - g.saved);
-    const amount = Math.min(bal, need);
-    if (amount <= 0) return;
+    const most = Math.min(bal, need);
+    if (most <= 0) { toast('Nothing available to put in.'); return; }
+
+    pendingPutId = id;
+    document.getElementById('putJarName').textContent = g.name;
+    document.getElementById('putAvailable').textContent = formatMoney(bal);
+    document.getElementById('putNeeded').textContent = formatMoney(need);
+    // No `max` attribute: it would make the browser block submit silently.
+    // Anything too large is trimmed on submit instead, with an explanation.
+    const input = document.getElementById('putAmount');
+    input.value = most;
+    document.getElementById('putMaxBtn').textContent = 'All ' + formatMoney(most);
+    putOverlay.classList.add('open');
+    setTimeout(() => { input.focus(); input.select(); }, 30);
+  }
+
+  function closePut() { putOverlay.classList.remove('open'); pendingPutId = null; }
+  document.getElementById('putCancel').addEventListener('click', closePut);
+  putOverlay.addEventListener('click', e => { if (e.target === putOverlay) closePut(); });
+  document.getElementById('putMaxBtn').addEventListener('click', () => {
+    const g = goals.find(x => x.id === pendingPutId);
+    if (!g) return;
+    const input = document.getElementById('putAmount');
+    input.value = Math.min(walletBalance(), Math.max(0, g.target - g.saved));
+    input.focus();
+  });
+  document.getElementById('putForm').addEventListener('submit', e => {
+    e.preventDefault();
+    if (!pendingPutId) return;
+    const g = goals.find(x => x.id === pendingPutId);
+    if (!g) { closePut(); return; }
+    const most = Math.min(walletBalance(), Math.max(0, g.target - g.saved));
+    let amount = parseFloat(document.getElementById('putAmount').value);
+    if (isNaN(amount) || amount <= 0) { toast('Enter an amount first.'); return; }
+    if (amount > most) { amount = most; toast(`Trimmed to ${formatMoney(most)} — that's all that fits.`); }
+    const id = pendingPutId;
+    closePut();
+    movePutAmount(id, Math.round(amount * 100) / 100);
+  });
+
+  // move money out of the wallet and into a jar
+  function movePutAmount(id, amount) {
+    const g = goals.find(x => x.id === id);
+    if (!g || amount <= 0) return;
 
     const wasComplete = g.saved >= g.target;
     g.saved = Math.round((g.saved + amount) * 100) / 100;
@@ -1415,7 +1491,8 @@
   });
   document.addEventListener('keydown', e => {
     if (e.key !== 'Escape') return;
-    if (confirmOverlay.classList.contains('open')) closeConfirm();
+    if (putOverlay.classList.contains('open')) closePut();
+    else if (confirmOverlay.classList.contains('open')) closeConfirm();
     else if (modalOverlay.classList.contains('open')) closeModal();
   });
 
