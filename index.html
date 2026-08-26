@@ -404,6 +404,7 @@
   .event-name { font-family: var(--font-display); font-size: 1.34rem; font-weight: 500; margin: 0 0 4px; }
   .event-why { font-family: var(--font-display); font-style: italic; color: var(--plum-dim); margin: 0 0 6px; font-size: 1.08rem; }
   .event-meta { font-size: 0.8rem; color: var(--plum-faint); }
+  .event-pace { margin-top: 5px; font-size: 0.98rem; }
   .event-side { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
   .event-actions { display: flex; gap: 6px; }
 
@@ -1142,6 +1143,7 @@
             <div>
               <h3 class="event-name">${hasIcon(g) ? escapeHtml(iconFor(g)) + ' ' : ''}${escapeHtml(g.name)}</h3>
               <p class="event-meta">${escapeHtml(monthLabel(g.eventDate))}</p>
+              ${paceNote(g) ? `<p class="pace-note event-pace">${escapeHtml(paceNote(g))}</p>` : ''}
             </div>
             <div class="event-side"><span class="event-meta">${left > 0 ? formatMoney(left) + ' to go' : 'fully saved'}</span></div>
           </div>`;
@@ -1419,6 +1421,7 @@
         <h3 class="event-name">${hasIcon(g) ? escapeHtml(iconFor(g)) + ' ' : ''}${escapeHtml(g.name)}</h3>
         ${g.why ? `<p class="event-why">"${escapeHtml(g.why)}"</p>` : ''}
         <p class="event-meta">${g.eventLocation ? escapeHtml(g.eventLocation) + ' · ' : ''}${formatMoney(g.saved)} of ${formatMoney(g.target)} saved</p>
+        ${paceNote(g) ? `<p class="pace-note event-pace">${escapeHtml(paceNote(g))}</p>` : ''}
       </div>
       <div class="event-side">
         <span class="priority-stars">${starsHtml(g.priority || 'medium')}</span>
