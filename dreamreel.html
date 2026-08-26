@@ -1,0 +1,1700 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>jars — a soft, romantic savings planner</title>
+<script>
+  // set the theme before first paint so there's no flash
+  (function () {
+    try {
+      var t = localStorage.getItem('dreamreel_theme');
+      if (!t) t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', t);
+    } catch (e) { document.documentElement.setAttribute('data-theme', 'light'); }
+  })();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500;1,600&family=Playfair+Display:ital,wght@0,400;0,500;1,400;1,500;1,600&family=Montserrat:wght@400;500;600&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* rose berry */
+    --cream: #F9F1E8;
+    --cream-deep: #F2E6DA;
+    --paper: #FFFCF8;
+    --plum: #574144;
+    --plum-dim: rgba(87, 65, 68, 0.66);
+    --plum-faint: rgba(87, 65, 68, 0.40);
+    --rose: #BF7E81;
+    --rose-deep: #9A5D61;
+    --rose-dark: #7A464B;
+    --mauve: #B79EA1;
+    --mauve-deep: #8E767A;
+    --blush: #FFE4E1;
+    --blush-deep: #F6CFCB;
+    --line: rgba(191, 126, 129, 0.30);
+    --line-soft: rgba(191, 126, 129, 0.16);
+    --danger: #A85560;
+    --shadow-tint: rgba(87, 65, 68, 0.09);
+    --shadow-lift: rgba(87, 65, 68, 0.16);
+    --grain: rgba(87, 65, 68, 0.06);
+    --col-bg: rgba(255, 252, 248, 0.66);
+    --tag-ink: #6E3B3F;
+    --tag-exp-bg: rgba(183, 158, 161, 0.42);
+    --tag-exp-ink: #4F4145;
+    --star-empty: rgba(87, 65, 68, 0.18);
+    --track-bg: rgba(183, 158, 161, 0.28);
+    --scrim: rgba(87, 65, 68, 0.40);
+    --font-display: 'Cormorant Garamond', Georgia, serif;
+    --font-fancy: 'Playfair Display', Georgia, serif;
+    --font-label: 'Montserrat', 'Helvetica Neue', Arial, sans-serif;
+    --font-body: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+  }
+
+  /* rose berry, after dark */
+  :root[data-theme="dark"] {
+    --cream: #241B1D;
+    --cream-deep: #2E2326;
+    --paper: #302528;
+    --plum: #F3E8E2;
+    --plum-dim: rgba(243, 232, 226, 0.70);
+    --plum-faint: rgba(243, 232, 226, 0.44);
+    --rose: #D4979A;
+    --rose-deep: #E3ACAF;
+    --rose-dark: #C4868A;
+    --mauve: #B79EA1;
+    --mauve-deep: #C6B0B3;
+    --blush: #4A3639;
+    --blush-deep: #573F43;
+    --line: rgba(212, 151, 154, 0.30);
+    --line-soft: rgba(212, 151, 154, 0.16);
+    --danger: #E8929E;
+    --shadow-tint: rgba(0, 0, 0, 0.28);
+    --shadow-lift: rgba(0, 0, 0, 0.42);
+    --grain: rgba(255, 240, 235, 0.05);
+    --col-bg: rgba(48, 37, 40, 0.72);
+    --tag-ink: #F6DDE0;
+    --tag-exp-bg: rgba(183, 158, 161, 0.30);
+    --tag-exp-ink: #EDE2E4;
+    --star-empty: rgba(243, 232, 226, 0.22);
+    --track-bg: rgba(243, 232, 226, 0.16);
+    --scrim: rgba(14, 9, 10, 0.66);
+  }
+  :root[data-theme="dark"] body {
+    background:
+      radial-gradient(ellipse at 14% 4%, rgba(212, 151, 154, 0.16), transparent 42%),
+      radial-gradient(ellipse at 86% 10%, rgba(183, 158, 161, 0.14), transparent 40%),
+      radial-gradient(ellipse at 80% 92%, rgba(212, 151, 154, 0.12), transparent 44%),
+      radial-gradient(ellipse at 6% 84%, rgba(154, 93, 97, 0.16), transparent 40%),
+      var(--cream);
+    background-attachment: fixed;
+  }
+  :root[data-theme="dark"] .petal { opacity: 0.24; }
+  :root[data-theme="dark"] .sprig { opacity: 0.75; }
+  :root[data-theme="dark"] .card-photo img,
+  :root[data-theme="dark"] .link-image img,
+  :root[data-theme="dark"] .collection-ring { filter: brightness(0.88); }
+
+  * { box-sizing: border-box; }
+  ::selection { background: var(--blush); color: var(--plum); }
+
+  body {
+    margin: 0; min-height: 100vh;
+    background:
+      radial-gradient(ellipse at 14% 4%, rgba(255, 228, 225, 0.85), transparent 42%),
+      radial-gradient(ellipse at 86% 10%, rgba(183, 158, 161, 0.30), transparent 40%),
+      radial-gradient(ellipse at 80% 92%, rgba(255, 228, 225, 0.7), transparent 44%),
+      radial-gradient(ellipse at 6% 84%, rgba(191, 126, 129, 0.16), transparent 40%),
+      var(--cream);
+    background-attachment: fixed;
+    color: var(--plum);
+    font-family: var(--font-body); font-size: 15px; line-height: 1.7;
+    overflow-x: hidden;
+  }
+
+  /* paper grain */
+  body::before {
+    content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background-image: radial-gradient(var(--grain) 1px, transparent 1px);
+    background-size: 3px 3px;
+  }
+
+  /* drifting petals */
+  #petals { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+  .petal {
+    position: absolute; border-radius: 60% 40% 62% 38% / 46% 60% 40% 54%;
+    opacity: 0.5; animation: driftPetal var(--dur, 26s) ease-in-out infinite alternate;
+  }
+  @keyframes driftPetal {
+    from { transform: translate(0,0) rotate(0deg); }
+    to { transform: translate(26px, -20px) rotate(24deg); }
+  }
+  #sprigs { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
+  .sprig { position: absolute; animation: swayLeaf var(--dur, 12s) ease-in-out infinite alternate; }
+  @keyframes swayLeaf { from { transform: rotate(-3deg) translateY(-4px); } to { transform: rotate(3deg) translateY(5px); } }
+
+  #petalFall { position: fixed; inset: 0; pointer-events: none; z-index: 60; overflow: hidden; }
+  .fall-petal {
+    position: absolute; width: 12px; height: 14px; opacity: 0;
+    border-radius: 60% 40% 62% 38% / 46% 60% 40% 54%;
+    animation: petalDrop var(--dur, 2.6s) ease-in forwards;
+  }
+  @keyframes petalDrop {
+    0% { opacity: 1; transform: translate(0,0) rotate(0deg); }
+    100% { opacity: 0; transform: translate(var(--dx, 40px), 80vh) rotate(var(--rot, 480deg)); }
+  }
+
+  @keyframes riseIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+  @keyframes modalPop { from { opacity: 0; transform: scale(0.97) translateY(8px); } to { opacity: 1; transform: none; } }
+
+  .label {
+    font-family: var(--font-label); text-transform: uppercase;
+    letter-spacing: 0.26em; font-size: 0.6rem; font-weight: 500; color: var(--rose-deep);
+  }
+
+  /* ---------- Nav ---------- */
+  .topnav {
+    position: relative; z-index: 3; max-width: 1080px; margin: 0 auto;
+    padding: 24px 28px 16px; display: flex; align-items: center; justify-content: space-between;
+    gap: 18px; flex-wrap: wrap; border-bottom: 1px solid var(--line-soft);
+  }
+  .brandmark { font-family: var(--font-display); font-size: 1.5rem; font-weight: 400; color: var(--plum); white-space: nowrap; letter-spacing: 0.01em; }
+  .brandmark em { font-family: var(--font-fancy); font-style: italic; font-weight: 500; color: var(--rose-deep); }
+  .navlinks { display: flex; gap: 30px; flex-wrap: wrap; }
+  .navlink {
+    background: none; border: none; cursor: pointer; padding: 4px 0; position: relative;
+    font-family: var(--font-label); text-transform: uppercase; letter-spacing: 0.16em;
+    font-size: 0.64rem; font-weight: 500; color: var(--plum-dim); transition: color 0.25s ease;
+  }
+  .navlink::after { content: ""; position: absolute; left: 50%; right: 50%; bottom: -3px; height: 1px; background: var(--rose); transition: left 0.28s ease, right 0.28s ease; }
+  .navlink:hover { color: var(--plum); }
+  .navlink.active { color: var(--rose-deep); }
+  .navlink.active::after { left: 0; right: 0; }
+  .nav-right { display: flex; align-items: center; gap: 12px; }
+  .theme-toggle {
+    background: transparent; border: 1px solid var(--line); color: var(--rose-deep);
+    width: 34px; height: 34px; border-radius: 50%; cursor: pointer; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; font-size: 0.95rem; line-height: 1;
+    transition: background 0.25s ease, color 0.25s ease, border-color 0.25s ease;
+  }
+  .theme-toggle:hover { background: var(--blush); border-color: var(--rose); }
+
+  .btn-add {
+    font-family: var(--font-label); text-transform: uppercase; letter-spacing: 0.14em; font-size: 0.6rem; font-weight: 500;
+    color: var(--cream); background: var(--rose-deep); border: none; border-radius: 999px;
+    padding: 11px 24px; cursor: pointer; white-space: nowrap;
+    box-shadow: 0 5px 14px rgba(122, 70, 75, 0.24); transition: background 0.25s ease, transform 0.25s ease;
+  }
+  .btn-add:hover { background: var(--rose-dark); transform: translateY(-2px); }
+
+  main { position: relative; z-index: 1; max-width: 1080px; margin: 0 auto; padding: 0 28px 130px; }
+
+  .rule { display: flex; align-items: center; gap: 16px; margin: 60px 0 28px; }
+  .rule::before, .rule::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, transparent, var(--line), transparent); }
+  .rule span { font-family: var(--font-label); text-transform: uppercase; letter-spacing: 0.26em; font-size: 0.6rem; font-weight: 500; color: var(--mauve-deep); white-space: nowrap; }
+
+  /* ---------- Hero ---------- */
+  .hero { position: relative; text-align: center; padding: 76px 0 20px; animation: riseIn 0.8s ease both; }
+  .wordmark { margin: 0; line-height: 0.94; }
+  .wordmark .w1 {
+    display: inline-block; font-family: var(--font-display); font-weight: 300;
+    font-size: clamp(3rem, 11vw, 6.2rem); color: var(--plum); letter-spacing: 0.01em;
+  }
+  .wordmark .w2 {
+    display: inline-block; font-family: var(--font-fancy); font-style: italic; font-weight: 600;
+    font-size: clamp(3rem, 11vw, 6.2rem); color: var(--rose-deep); margin-left: 0.12em;
+  }
+  .hero-quote { font-family: var(--font-display); font-style: italic; font-size: clamp(1.05rem, 2.4vw, 1.35rem); color: var(--plum-dim); margin: 18px auto 0; max-width: 430px; line-height: 1.55; }
+  .hero-sum { font-family: var(--font-display); font-size: 2.5rem; font-weight: 500; color: var(--rose-deep); margin: 28px 0 0; }
+  .hero-sum small { display: block; font-family: var(--font-label); font-size: 0.56rem; letter-spacing: 0.24em; text-transform: uppercase; color: var(--plum-faint); margin-top: 8px; }
+
+  .greeting-block { text-align: center; }
+  .greeting { font-family: var(--font-display); font-size: 2rem; font-weight: 500; margin: 0; }
+  .saving-for { font-family: var(--font-display); font-style: italic; font-size: 1.2rem; color: var(--plum-dim); margin: 12px 0 10px; }
+  .saving-item { font-family: var(--font-display); font-size: 1.35rem; color: var(--plum); margin: 5px 0; }
+  .saving-item i { color: var(--rose); font-style: normal; margin-right: 8px; }
+  .days-closer { font-family: var(--font-display); font-style: italic; font-size: 1.35rem; color: var(--rose-deep); margin-top: 22px; }
+
+  /* ---------- Collections ---------- */
+  .collections { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 22px; }
+  .collection {
+    background: var(--paper); border: 1px solid var(--line-soft); border-radius: 4px;
+    padding: 28px 20px; text-align: center; cursor: pointer;
+    box-shadow: 0 4px 16px var(--shadow-tint);
+    transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+    animation: riseIn 0.5s ease both;
+  }
+  .collection:hover { transform: translateY(-4px); border-color: var(--rose); box-shadow: 0 12px 28px var(--shadow-lift); }
+  .collection-ring {
+    width: 88px; height: 88px; border-radius: 50%; margin: 0 auto 16px;
+    background-size: cover; background-position: center;
+    border: 1px solid var(--line); box-shadow: 0 4px 12px var(--shadow-tint);
+  }
+  .collection-name { font-family: var(--font-display); font-size: 1.32rem; margin: 0 0 5px; font-weight: 500; }
+  .collection-sub { font-family: var(--font-display); font-style: italic; color: var(--plum-dim); margin: 0 0 12px; font-size: 1.05rem; }
+  .collection-count { font-family: var(--font-label); font-size: 0.56rem; font-weight: 500; letter-spacing: 0.18em; text-transform: uppercase; color: var(--rose-deep); }
+
+  /* ---------- Dream card ---------- */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(262px, 1fr)); gap: 26px; }
+  .dream-card {
+    background: var(--paper); border: 1px solid var(--line-soft); border-radius: 4px;
+    padding: 26px 22px; text-align: center; display: flex; flex-direction: column; gap: 12px;
+    animation: riseIn 0.5s ease both; position: relative;
+    box-shadow: 0 4px 16px var(--shadow-tint);
+    transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+  }
+  .dream-card:hover { transform: translateY(-4px); border-color: var(--rose); box-shadow: 0 14px 32px var(--shadow-lift); }
+  .card-photo { margin: -26px -22px 4px; overflow: hidden; }
+  .card-photo img { width: 100%; display: block; aspect-ratio: 16/10; object-fit: cover; }
+  .card-name { margin: 0; font-family: var(--font-display); font-size: 1.42rem; font-weight: 500; letter-spacing: 0.01em; }
+  .card-quote { font-family: var(--font-display); font-style: italic; font-size: 1.1rem; color: var(--plum-dim); margin: 0; line-height: 1.45; }
+  .card-tags { display: flex; gap: 10px; align-items: center; justify-content: center; flex-wrap: wrap; }
+  .tag {
+    font-family: var(--font-label); text-transform: uppercase; letter-spacing: 0.14em;
+    font-size: 0.52rem; font-weight: 500; padding: 4px 11px; border-radius: 999px;
+  }
+  .tag.type-item { color: var(--tag-ink); background: var(--blush); }
+  .tag.type-experience { color: var(--tag-exp-ink); background: var(--tag-exp-bg); }
+  .tag.type-celebration { color: var(--cream); background: var(--rose-deep); }
+  .priority-stars { font-size: 0.68rem; letter-spacing: 2px; }
+  .stars-filled { color: var(--rose); }
+  .stars-empty { color: var(--star-empty); }
+  .card-date { font-family: var(--font-label); text-transform: uppercase; letter-spacing: 0.12em; font-size: 0.53rem; color: var(--plum-faint); margin: 0; }
+  .card-amounts { font-family: var(--font-display); font-size: 1.2rem; color: var(--plum); }
+  .card-amounts b { color: var(--rose-deep); font-weight: 600; }
+  .card-amounts span { color: var(--plum-faint); font-size: 0.92rem; }
+  .progress-track { height: 6px; background: var(--track-bg); border-radius: 999px; overflow: hidden; }
+  .progress-fill { height: 6px; border-radius: 999px; background: linear-gradient(90deg, var(--mauve), var(--rose)); transition: width 0.6s ease; }
+  .progress-fill.complete { background: linear-gradient(90deg, var(--rose), var(--rose-dark)); }
+  .card-meta-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .progress-pct { font-family: var(--font-label); font-size: 0.52rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--plum-faint); }
+  .stamp { font-family: var(--font-display); font-style: italic; font-size: 1rem; padding: 1px 12px; border: 1px solid currentColor; border-radius: 999px; }
+  .stamp-achieved { color: var(--rose-deep); }
+  .stamp-almost { color: var(--rose); }
+  .stamp-slow { color: var(--mauve-deep); }
+  .milestone-note { font-size: 0.76rem; color: var(--mauve-deep); margin: 0; }
+  .tag-row { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+  .chip { font-family: var(--font-label); font-size: 0.52rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.1em; padding: 3px 11px; background: var(--cream-deep); border: 1px solid var(--line-soft); border-radius: 999px; color: var(--plum-dim); }
+  .notes { font-size: 0.83rem; color: var(--plum-dim); line-height: 1.6; word-break: break-word; white-space: pre-wrap; text-align: left; }
+  .notes a.note-link { color: var(--rose-deep); text-decoration: none; border-bottom: 1px solid var(--line); }
+  .notes a.note-link:hover { border-bottom-color: var(--rose-deep); }
+  .link-images { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+  .link-image { display: block; overflow: hidden; border: 1px solid var(--line); line-height: 0; }
+  .link-image img { width: 64px; height: 64px; object-fit: cover; display: block; transition: transform 0.3s ease; }
+  .link-image:hover img { transform: scale(1.08); }
+  .checklist { display: flex; flex-direction: column; gap: 6px; text-align: left; }
+  .checklist-item { display: flex; align-items: center; gap: 9px; font-size: 0.82rem; color: var(--plum-dim); }
+  .checklist-item.done span { text-decoration: line-through; color: var(--plum-faint); }
+  .checklist-item input[type="checkbox"] { accent-color: var(--rose-deep); }
+  .checklist-remove { margin-left: auto; background: none; border: none; color: var(--plum-faint); cursor: pointer; }
+  .checklist-remove:hover { color: var(--danger); }
+  .checklist-input { border: none; border-bottom: 1px solid var(--line); background: transparent; padding: 5px 2px; font-size: 0.79rem; color: var(--plum); font-family: inherit; width: 100%; }
+  .checklist-input::placeholder { color: var(--plum-faint); }
+  .checklist-input:focus { outline: none; border-bottom-color: var(--rose); }
+  .card-actions { display: flex; gap: 8px; margin-top: auto; padding-top: 14px; border-top: 1px solid var(--line-soft); flex-wrap: wrap; }
+  .add-funds-row { display: flex; gap: 8px; flex: 1 1 126px; min-width: 0; }
+  .add-funds-row input { flex: 1; min-width: 0; background: var(--cream); border: 1px solid var(--line); color: var(--plum); padding: 7px 10px; font-size: 0.79rem; font-family: inherit; border-radius: 999px; text-align: center; }
+  .add-funds-row input::placeholder { color: var(--plum-faint); }
+  .add-funds-row input:focus { outline: none; border-color: var(--rose); }
+  .icon-btn {
+    background: var(--cream); border: 1px solid var(--line); color: var(--plum-dim);
+    width: 32px; height: 32px; flex-shrink: 0; cursor: pointer; font-size: 0.85rem; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center; transition: all 0.2s ease;
+  }
+  .icon-btn:hover { background: var(--rose); border-color: var(--rose); color: var(--cream); }
+  .icon-btn.delete:hover { background: var(--danger); border-color: var(--danger); color: var(--cream); }
+
+  /* ---------- Ledger ---------- */
+  .ledger { max-width: 400px; margin: 0 auto; text-align: center; }
+  .ledger-row { display: flex; justify-content: space-between; padding: 13px 0; border-bottom: 1px solid var(--line-soft); font-size: 0.88rem; }
+  .ledger-row span:first-child { font-family: var(--font-label); text-transform: uppercase; letter-spacing: 0.15em; font-size: 0.55rem; color: var(--plum-dim); }
+  .fund-editable { cursor: pointer; border-bottom: 1px dashed var(--line); color: var(--rose-deep); font-weight: 500; }
+  .fund-editable input { width: 92px; text-align: right; background: var(--paper); border: 1px solid var(--line); padding: 1px 6px; font-family: inherit; font-size: 0.88rem; color: var(--plum); }
+  .fund-delta { color: var(--rose-deep); font-weight: 500; }
+  .ledger-foot { font-family: var(--font-display); font-style: italic; font-size: 1.2rem; color: var(--mauve-deep); margin: 20px 0 0; }
+
+  /* ---------- Toast ---------- */
+  .toast {
+    position: fixed; left: 50%; bottom: 30px; transform: translateX(-50%);
+    background: var(--plum); color: var(--cream); padding: 13px 24px; border-radius: 999px;
+    font-family: var(--font-body); font-size: 0.85rem; z-index: 200; max-width: 90vw; text-align: center;
+    box-shadow: 0 10px 26px var(--shadow-lift);
+    animation: toastIn 0.28s ease both, toastOut 0.35s ease 3.1s forwards;
+  }
+  @keyframes toastIn { from { opacity: 0; transform: translate(-50%, 14px); } to { opacity: 1; transform: translate(-50%, 0); } }
+  @keyframes toastOut { to { opacity: 0; transform: translate(-50%, 14px); } }
+
+  /* ---------- Wallet ---------- */
+  .wallet-balance {
+    max-width: 420px; margin: 0 auto; text-align: center;
+    background: var(--paper); border: 1px solid var(--line); border-radius: 4px;
+    padding: 34px 26px; box-shadow: 0 4px 16px var(--shadow-tint);
+  }
+  .wallet-amount { font-family: var(--font-display); font-size: 3rem; font-weight: 500; color: var(--rose-deep); margin: 8px 0 0; line-height: 1; }
+  .wallet-amount.empty { color: var(--mauve-deep); }
+  .wallet-note { font-family: var(--font-display); font-style: italic; color: var(--plum-dim); margin: 14px 0 0; font-size: 1.05rem; }
+  .wallet-breakdown { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line-soft); }
+  .wallet-breakdown span { display: flex; justify-content: space-between; padding: 4px 0; }
+  .wallet-breakdown i { font-family: var(--font-label); font-style: normal; text-transform: uppercase; letter-spacing: 0.13em; font-size: 0.52rem; color: var(--plum-faint); }
+  .wallet-breakdown b { font-family: var(--font-display); font-weight: 500; font-size: 1rem; color: var(--plum-dim); }
+
+  .wallet-form { max-width: 420px; margin: 22px auto 0; }
+  .wallet-inputs { display: flex; flex-direction: column; gap: 10px; }
+  .wallet-inputs input {
+    width: 100%; background: var(--paper); border: 1px solid var(--line); color: var(--plum);
+    padding: 12px 14px; font-size: 0.92rem; font-family: var(--font-body); border-radius: 2px;
+  }
+  .wallet-inputs input::placeholder { color: var(--plum-faint); }
+  .wallet-inputs input:focus { outline: none; border-color: var(--rose); }
+  .wallet-buttons { display: flex; gap: 10px; margin-top: 12px; }
+  .wallet-buttons button { flex: 1; }
+
+  .cover-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+    background: var(--paper); border: 1px solid var(--line-soft); border-radius: 4px;
+    padding: 16px 20px; margin-bottom: 10px; max-width: 620px; margin-left: auto; margin-right: auto;
+  }
+  .cover-name { font-family: var(--font-display); font-size: 1.2rem; font-weight: 500; margin: 0; }
+  .cover-meta { font-size: 0.8rem; color: var(--plum-faint); }
+  .cover-right { display: flex; align-items: center; gap: 12px; }
+  .cover-need { font-family: var(--font-display); font-size: 1.05rem; color: var(--rose-deep); white-space: nowrap; }
+  .cover-badge {
+    font-family: var(--font-label); font-size: 0.5rem; letter-spacing: 0.14em; text-transform: uppercase;
+    padding: 4px 10px; border-radius: 999px;
+  }
+  .cover-badge.yes { background: var(--blush); color: var(--tag-ink); }
+  .cover-badge.partly { background: var(--cream-deep); color: var(--mauve-deep); }
+  .btn-put {
+    font-family: var(--font-label); text-transform: uppercase; letter-spacing: 0.12em; font-size: 0.52rem;
+    background: transparent; border: 1px solid var(--rose); color: var(--rose-deep);
+    padding: 7px 14px; border-radius: 999px; cursor: pointer; white-space: nowrap; transition: all 0.2s ease;
+  }
+  .btn-put:hover { background: var(--rose-deep); border-color: var(--rose-deep); color: var(--cream); }
+  .btn-put:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .wallet-entry {
+    display: flex; align-items: center; justify-content: space-between; gap: 14px;
+    max-width: 620px; margin: 0 auto; padding: 13px 4px; border-bottom: 1px solid var(--line-soft);
+  }
+  .wallet-entry-note { font-family: var(--font-display); font-size: 1.1rem; }
+  .wallet-entry-date { display: block; font-family: var(--font-label); font-size: 0.5rem; letter-spacing: 0.13em; text-transform: uppercase; color: var(--plum-faint); margin-top: 2px; }
+  .wallet-entry-amt { font-family: var(--font-display); font-size: 1.15rem; white-space: nowrap; }
+  .wallet-entry-amt.in { color: var(--rose-deep); }
+  .wallet-entry-amt.out { color: var(--mauve-deep); }
+  .wallet-entry-right { display: flex; align-items: center; gap: 12px; }
+
+  /* ---------- Priority board ---------- */
+  .board { display: grid; grid-template-columns: repeat(auto-fit, minmax(258px, 1fr)); gap: 20px; align-items: start; }
+  .board-col {
+    background: var(--col-bg); border: 1px solid var(--line-soft);
+    border-radius: 4px; padding: 22px 16px; transition: background 0.2s ease, border-color 0.2s ease;
+  }
+  .board-col.drag-over { background: var(--blush); border-color: var(--rose); }
+  .board-title { font-family: var(--font-display); font-size: 1.3rem; font-weight: 500; margin: 0 0 3px; text-align: center; }
+  .board-title.p-high { color: var(--rose-deep); }
+  .board-title.p-medium { color: var(--plum); }
+  .board-title.p-low { color: var(--mauve-deep); }
+  .board-sub { text-align: center; font-family: var(--font-display); font-style: italic; color: var(--plum-faint); margin: 0 0 18px; font-size: 1rem; }
+  .board-list { display: flex; flex-direction: column; gap: 16px; min-height: 60px; }
+  .dream-card[draggable="true"] { cursor: grab; }
+  .dream-card.dragging { opacity: 0.4; }
+
+  /* ---------- Events ---------- */
+  .month-head { font-family: var(--font-label); text-transform: uppercase; letter-spacing: 0.28em; font-size: 0.6rem; font-weight: 500; color: var(--mauve-deep); margin: 42px 0 16px; text-align: center; }
+  .event-row {
+    display: grid; grid-template-columns: 82px 1fr auto; gap: 22px; align-items: center;
+    background: var(--paper); border: 1px solid var(--line-soft); border-radius: 4px;
+    padding: 20px 24px; margin-bottom: 12px; box-shadow: 0 3px 12px var(--shadow-tint);
+    animation: riseIn 0.45s ease both;
+  }
+  .event-day { text-align: center; }
+  .event-day b { display: block; font-family: var(--font-display); font-size: 2.2rem; font-weight: 500; line-height: 1; color: var(--rose-deep); }
+  .event-day small { font-family: var(--font-label); font-size: 0.52rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--plum-faint); }
+  .event-name { font-family: var(--font-display); font-size: 1.34rem; font-weight: 500; margin: 0 0 4px; }
+  .event-why { font-family: var(--font-display); font-style: italic; color: var(--plum-dim); margin: 0 0 6px; font-size: 1.08rem; }
+  .event-meta { font-size: 0.8rem; color: var(--plum-faint); }
+  .event-side { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+  .event-actions { display: flex; gap: 6px; }
+
+  /* ---------- Calendar ---------- */
+  .cal-nav { display: flex; align-items: center; justify-content: center; gap: 24px; margin: 28px 0 22px; }
+  .cal-month { font-family: var(--font-display); font-size: 1.7rem; font-weight: 500; min-width: 230px; text-align: center; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; max-width: 680px; margin: 0 auto; }
+  .cal-head { text-align: center; font-family: var(--font-label); font-size: 0.5rem; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; color: var(--plum-faint); padding-bottom: 10px; }
+  .cal-cell {
+    aspect-ratio: 1; background: var(--paper); border: 1px solid var(--line-soft);
+    cursor: pointer; position: relative; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 5px; transition: all 0.22s ease;
+  }
+  .cal-cell.blank { background: transparent; border-color: transparent; cursor: default; }
+  .cal-cell:not(.blank):hover { border-color: var(--rose); background: var(--blush); }
+  .cal-cell.today { border-color: var(--rose); }
+  .cal-cell.today .cal-num { color: var(--cream); background: var(--rose-deep); border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; }
+  .cal-cell.selected { background: var(--rose-deep); border-color: var(--rose-deep); }
+  .cal-cell.selected .cal-num { color: var(--cream); background: transparent; }
+  .cal-cell.just-added { animation: markPop 1.7s ease; }
+  @keyframes markPop { 0%,100% { box-shadow: none; } 30% { box-shadow: 0 0 0 6px rgba(191, 126, 129, 0.34); } }
+  .cal-num { font-size: 0.86rem; color: var(--plum-dim); font-family: var(--font-display); }
+  .cal-dots { display: flex; gap: 3px; height: 5px; align-items: center; }
+  .cal-dot { width: 5px; height: 5px; border-radius: 50%; }
+  .cal-dot.type-item { background: var(--rose); }
+  .cal-dot.type-experience { background: var(--mauve-deep); }
+  .cal-dot.type-celebration { background: var(--rose-dark); }
+  .cal-cell.selected .cal-dot { background: var(--blush); }
+
+  .day-detail { max-width: 680px; margin: 44px auto 0; }
+  .day-detail-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 22px; }
+  .day-detail-title { font-family: var(--font-display); font-size: 1.5rem; margin: 0; font-weight: 500; }
+
+  /* ---------- Page heads ---------- */
+  .page-head { text-align: center; padding: 58px 0 8px; animation: riseIn 0.6s ease both; }
+  .page-title { font-family: var(--font-display); font-size: clamp(2.2rem, 6.4vw, 3.6rem); margin: 12px 0 0; font-weight: 400; color: var(--plum); }
+  .page-title em { font-family: var(--font-fancy); font-style: italic; font-weight: 500; color: var(--rose-deep); }
+  .page-sub { font-family: var(--font-display); font-style: italic; font-size: 1.2rem; color: var(--plum-dim); margin: 12px 0 0; }
+
+  .empty-state { text-align: center; padding: 46px 20px; }
+  .empty-state h2 { font-family: var(--font-display); font-size: 1.5rem; font-weight: 500; margin: 0 0 8px; }
+  .empty-state p { color: var(--plum-dim); margin: 0 0 20px; font-family: var(--font-display); font-style: italic; font-size: 1.08rem; }
+  .empty-hint { color: var(--plum-faint); font-family: var(--font-display); font-style: italic; font-size: 1.08rem; padding: 12px 2px; text-align: center; }
+  .hint-text { text-align: center; color: var(--plum-faint); font-size: 0.8rem; margin-top: 28px; font-family: var(--font-display); font-style: italic; }
+  .reflection { font-family: var(--font-display); font-style: italic; font-size: 1.45rem; color: var(--plum); text-align: center; max-width: 560px; margin: 0 auto; line-height: 1.55; }
+
+  /* ---------- Buttons / modal ---------- */
+  .btn-primary {
+    font-family: var(--font-label); text-transform: uppercase; letter-spacing: 0.15em; font-size: 0.58rem; font-weight: 500;
+    color: var(--cream); background: var(--rose-deep); border: none; padding: 13px 26px;
+    cursor: pointer; border-radius: 999px; transition: background 0.2s ease, transform 0.2s ease;
+  }
+  .btn-primary:hover { background: var(--rose-dark); transform: translateY(-2px); }
+  .btn-ghost {
+    font-family: var(--font-label); text-transform: uppercase; letter-spacing: 0.15em; font-size: 0.58rem; font-weight: 500;
+    background: transparent; color: var(--plum-dim); border: 1px solid var(--line);
+    padding: 13px 26px; cursor: pointer; border-radius: 999px; transition: all 0.2s ease;
+  }
+  .btn-ghost:hover { color: var(--plum); border-color: var(--rose); }
+  .btn-ghost-sm { font-family: var(--font-label); font-size: 0.52rem; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; background: transparent; border: 1px solid var(--line); color: var(--plum-dim); padding: 5px 12px; cursor: pointer; border-radius: 999px; }
+  .btn-ghost-sm:hover { border-color: var(--danger); color: var(--danger); }
+  .btn-danger-solid { font-family: var(--font-label); text-transform: uppercase; letter-spacing: 0.15em; font-size: 0.58rem; font-weight: 500; background: var(--danger); color: var(--cream); border: none; padding: 13px 26px; cursor: pointer; border-radius: 999px; }
+
+  .modal-overlay { position: fixed; inset: 0; background: var(--scrim); display: none; align-items: center; justify-content: center; z-index: 100; padding: 20px; backdrop-filter: blur(4px); }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--paper); border: 1px solid var(--line); border-radius: 4px;
+    width: 100%; max-width: 490px; max-height: 88vh; overflow-y: auto;
+    padding: 36px; animation: modalPop 0.3s ease; box-shadow: 0 24px 60px var(--shadow-lift);
+  }
+  .modal-title { font-family: var(--font-display); font-size: 1.9rem; margin: 6px 0 26px; font-weight: 500; }
+  .modal-confirm { max-width: 380px; text-align: center; }
+  .modal-confirm .modal-actions { justify-content: center; }
+  .confirm-text { color: var(--plum-dim); font-size: 0.9rem; margin: 0; line-height: 1.7; }
+  .confirm-text strong { font-family: var(--font-display); color: var(--plum); font-weight: 600; font-size: 1.05rem; }
+  .confirm-sub { display: block; font-family: var(--font-display); font-style: italic; color: var(--plum-faint); margin-top: 8px; }
+
+  .field { margin-bottom: 18px; }
+  .field-row { display: flex; gap: 14px; }
+  .field-row .field { flex: 1; }
+  .field label { display: block; font-family: var(--font-label); text-transform: uppercase; letter-spacing: 0.17em; font-size: 0.53rem; font-weight: 500; color: var(--rose-deep); margin-bottom: 8px; }
+  .label-optional { letter-spacing: 0.04em; text-transform: none; font-style: italic; color: var(--plum-faint); }
+  .field input[type="text"], .field input[type="number"], .field input[type="date"], .field input[type="file"], .field textarea {
+    width: 100%; background: var(--cream); border: 1px solid var(--line); color: var(--plum);
+    padding: 11px 13px; font-size: 0.87rem; font-family: var(--font-body); border-radius: 2px;
+  }
+  .field input::placeholder, .field textarea::placeholder { color: var(--plum-faint); }
+  .field input:focus, .field textarea:focus { outline: none; border-color: var(--rose); background: var(--paper); }
+  .field textarea { resize: vertical; min-height: 70px; }
+  .field input[type="date"] { color-scheme: light; }
+  .field-hint { margin-top: 7px; font-size: 0.74rem; color: var(--plum-faint); font-family: var(--font-display); font-style: italic; }
+
+  .pill-select { display: flex; gap: 8px; flex-wrap: wrap; }
+  .pill-option {
+    flex: 1; min-width: 110px; text-align: center; padding: 13px 10px; border: 1px solid var(--line);
+    background: var(--cream); color: var(--plum-dim); cursor: pointer;
+    font-family: var(--font-display); font-size: 1.06rem; border-radius: 2px; transition: all 0.2s ease;
+  }
+  .pill-option:hover { color: var(--plum); border-color: var(--rose); }
+  .pill-option.selected { border-color: var(--rose-deep); color: var(--plum); background: var(--blush); }
+
+  .photo-preview-wrap { margin-top: 12px; display: flex; align-items: center; gap: 12px; }
+  .photo-preview-wrap img { width: 62px; height: 62px; object-fit: cover; border: 1px solid var(--line); }
+  .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 28px; }
+
+  @media (max-width: 640px) {
+    .event-row { grid-template-columns: 62px 1fr; }
+    .event-side { grid-column: 2; align-items: flex-start; }
+    #sprigs { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div id="petals">
+  <span class="petal" style="left:-4%;top:6%;width:280px;height:250px;background:var(--blush);filter:blur(30px);--dur:26s"></span>
+  <span class="petal" style="right:-6%;top:18%;width:260px;height:240px;background:rgba(183,158,161,.45);filter:blur(32px);--dur:30s"></span>
+  <span class="petal" style="left:8%;bottom:14%;width:240px;height:220px;background:rgba(191,126,129,.28);filter:blur(30px);--dur:28s"></span>
+  <span class="petal" style="right:6%;bottom:8%;width:290px;height:250px;background:var(--blush);filter:blur(34px);--dur:32s"></span>
+</div>
+
+<div id="sprigs">
+  <!-- rose sprig -->
+  <svg class="sprig" style="left:4%;top:14%;--dur:13s" width="64" height="86" viewBox="0 0 64 86" fill="none" stroke="#BF7E81" stroke-width="1.3" stroke-linecap="round" opacity="0.4">
+    <path d="M32 84V34"/>
+    <path d="M32 46c-9 0-15-5-15-12 7 0 15 4 15 12ZM32 58c9 0 15-5 15-12-7 0-15 4-15 12Z"/>
+    <path d="M32 34c-7 0-12-5-12-11s5-11 12-11 12 5 12 11-5 11-12 11Z"/>
+    <path d="M32 28c-4 0-7-3-7-6s3-5 7-5 7 2 7 5-3 6-7 6Z"/>
+  </svg>
+  <!-- berry cluster -->
+  <svg class="sprig" style="right:5%;top:36%;--dur:15s" width="58" height="72" viewBox="0 0 58 72" fill="none" stroke="#9A5D61" stroke-width="1.3" stroke-linecap="round" opacity="0.36">
+    <path d="M29 70V40"/>
+    <circle cx="20" cy="30" r="8"/><circle cx="38" cy="30" r="8"/><circle cx="29" cy="15" r="8"/>
+    <path d="M29 40c-8 0-13-4-13-9M29 40c8 0 13-4 13-9"/>
+  </svg>
+  <!-- leaf sprig -->
+  <svg class="sprig" style="left:9%;bottom:16%;--dur:14s" width="52" height="70" viewBox="0 0 52 70" fill="none" stroke="#B79EA1" stroke-width="1.3" stroke-linecap="round" opacity="0.42">
+    <path d="M26 68V10"/>
+    <path d="M26 24c-10 0-16-6-16-13 8 0 16 5 16 13ZM26 38c10 0 16-6 16-13-8 0-16 5-16 13ZM26 52c-10 0-16-6-16-13 8 0 16 5 16 13Z"/>
+  </svg>
+  <svg class="sprig" style="right:11%;bottom:24%;--dur:12s" width="46" height="62" viewBox="0 0 52 70" fill="none" stroke="#BF7E81" stroke-width="1.3" stroke-linecap="round" opacity="0.32">
+    <path d="M26 68V10"/>
+    <path d="M26 24c-10 0-16-6-16-13 8 0 16 5 16 13ZM26 38c10 0 16-6 16-13-8 0-16 5-16 13Z"/>
+  </svg>
+</div>
+
+<div id="petalFall"></div>
+
+<nav class="topnav">
+  <div class="brandmark"><em>jars</em></div>
+  <div class="navlinks">
+    <button class="navlink active" data-page="home">Home</button>
+    <button class="navlink" data-page="wallet">Wallet</button>
+    <button class="navlink" data-page="priority">Priority</button>
+    <button class="navlink" data-page="events">Events</button>
+    <button class="navlink" data-page="calendar">Calendar</button>
+  </div>
+  <div class="nav-right">
+    <button class="theme-toggle" id="themeToggle" title="Switch theme" aria-label="Switch theme">☾</button>
+    <button class="btn-add" id="openAddModal">+ Add a Dream</button>
+  </div>
+</nav>
+
+<main>
+  <!-- ============ HOME ============ -->
+  <section id="page-home">
+    <div class="hero">
+      <h1 class="wordmark"><span class="w2">jars</span></h1>
+      <p class="hero-sum"><span id="heroSum"></span><small>Saved so far</small></p>
+    </div>
+
+    <div class="rule"><span>My Little Planner</span></div>
+    <div class="greeting-block">
+      <h2 class="greeting" id="greetingText"></h2>
+      <p class="saving-for">You are currently saving for:</p>
+      <div id="savingList"></div>
+      <p class="days-closer" id="daysCloser"></p>
+    </div>
+
+    <div class="rule"><span>My Collections</span></div>
+    <div class="collections" id="collections"></div>
+
+    <div class="rule"><span>Current Focus</span></div>
+    <div id="focusCard"></div>
+
+    <div class="rule"><span>The Ledger</span></div>
+    <div class="ledger">
+      <div class="ledger-row"><span>Total saved</span><span id="ledgerTotal"></span></div>
+      <div class="ledger-row"><span>Monthly goal</span><span class="fund-editable" id="monthlyGoalDisplay" title="Click to edit"></span></div>
+      <div class="ledger-row"><span>This month</span><span class="fund-delta" id="monthDelta"></span></div>
+      <p class="ledger-foot" id="ledgerFoot"></p>
+    </div>
+
+    <div class="rule"><span>Upcoming</span></div>
+    <div id="upcomingList"></div>
+
+    <div class="rule"><span>This Month</span></div>
+    <p class="reflection" id="reflectionNote"></p>
+
+    <div class="rule"><span>Recently Added</span></div>
+    <div class="grid" id="recentGrid"></div>
+  </section>
+
+  <!-- ============ WALLET ============ -->
+  <section id="page-wallet" style="display:none;">
+    <div class="page-head">
+      <p class="label">Wallet</p>
+      <h1 class="page-title">what i <em>have</em></h1>
+      <p class="page-sub">"money in hand, waiting to become something"</p>
+    </div>
+
+    <div class="wallet-balance">
+      <p class="label">Left to spend</p>
+      <p class="wallet-amount" id="walletBalance">₹0</p>
+      <div class="wallet-breakdown">
+        <span><i>Money in</i><b id="walletIn"></b></span>
+        <span><i>In your jars</i><b id="walletInJars"></b></span>
+      </div>
+      <p class="wallet-note" id="walletHint"></p>
+    </div>
+
+    <form class="wallet-form" id="walletForm">
+      <div class="wallet-inputs">
+        <input type="number" id="walletAmount" min="0" step="0.01" placeholder="Amount" required>
+        <input type="text" id="walletNote" maxlength="60" placeholder="What for? (optional)">
+      </div>
+      <div class="wallet-buttons">
+        <button type="submit" class="btn-primary" data-sign="1">+ Add</button>
+        <button type="button" class="btn-ghost" id="walletSpend">− Subtract</button>
+      </div>
+    </form>
+
+    <div class="rule"><span>What This Could Cover</span></div>
+    <div id="walletCovers"></div>
+
+    <div class="rule"><span>History</span></div>
+    <div id="walletHistory"></div>
+  </section>
+
+  <!-- ============ PRIORITY ============ -->
+  <section id="page-priority" style="display:none;">
+    <div class="page-head">
+      <p class="label">Priority</p>
+      <h1 class="page-title">what matters <em>most</em></h1>
+      <p class="page-sub">"where should my money go first?"</p>
+    </div>
+    <div class="board" id="board"></div>
+    <p class="hint-text">Drag a card into another column to change how much it matters.</p>
+  </section>
+
+  <!-- ============ EVENTS ============ -->
+  <section id="page-events" style="display:none;">
+    <div class="page-head">
+      <p class="label">Events</p>
+      <h1 class="page-title">things coming <em>up</em></h1>
+      <p class="page-sub">days worth remembering</p>
+    </div>
+    <div id="eventsList"></div>
+  </section>
+
+  <!-- ============ CALENDAR ============ -->
+  <section id="page-calendar" style="display:none;">
+    <div class="page-head">
+      <p class="label">Calendar</p>
+      <h1 class="page-title">my <em>year</em></h1>
+    </div>
+    <div class="cal-nav">
+      <button class="icon-btn" id="calPrev" title="Previous month">‹</button>
+      <span class="cal-month" id="calMonth"></span>
+      <button class="icon-btn" id="calNext" title="Next month">›</button>
+    </div>
+    <div class="cal-grid" id="calGrid"></div>
+    <div class="day-detail" id="calendarDayDetail"></div>
+  </section>
+</main>
+
+<!-- Add / Edit -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <p class="label">jars</p>
+    <h2 class="modal-title">What are we adding?</h2>
+    <form id="dreamForm">
+      <div class="field">
+        <label>Type</label>
+        <div class="pill-select" id="typeSelect">
+          <div class="pill-option selected" data-type="item">Something I want</div>
+          <div class="pill-option" data-type="experience">Somewhere to go</div>
+          <div class="pill-option" data-type="celebration">Something to celebrate</div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="dreamName">What is it?</label>
+        <input type="text" id="dreamName" placeholder="Sony A7 IV Camera" required>
+      </div>
+
+      <div class="field">
+        <label>How much it matters</label>
+        <div class="pill-select" id="prioritySelect">
+          <div class="pill-option" data-priority="high">★★★ Must have</div>
+          <div class="pill-option selected" data-priority="medium">★★ Nice to have</div>
+          <div class="pill-option" data-priority="low">★ Someday</div>
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="dreamIcon">Symbol <span class="label-optional">optional</span></label>
+          <input type="text" id="dreamIcon" maxlength="4" placeholder="—">
+        </div>
+        <div class="field">
+          <label for="dreamEventDate" id="dreamDateLabel">Date</label>
+          <input type="date" id="dreamEventDate">
+        </div>
+      </div>
+
+      <div class="field" id="celebrationLocationField" style="display:none;">
+        <label for="dreamEventLocation">Where</label>
+        <input type="text" id="dreamEventLocation" placeholder="The Grand Hall, Downtown">
+      </div>
+
+      <div class="field" id="tagsField" style="display:none;">
+        <label for="dreamTags">Tags</label>
+        <input type="text" id="dreamTags" placeholder="Friends, Travel, Food">
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="dreamTarget">Cost (₹)</label>
+          <input type="number" id="dreamTarget" min="0" step="0.01" placeholder="70000" required>
+        </div>
+        <div class="field">
+          <label for="dreamSaved">Saved (₹)</label>
+          <input type="number" id="dreamSaved" min="0" step="0.01" placeholder="0" value="0">
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="dreamWhy">Why I want this</label>
+        <textarea id="dreamWhy" placeholder="What makes this matter to you?"></textarea>
+      </div>
+
+      <div class="field">
+        <label for="dreamNotes">Notes</label>
+        <textarea id="dreamNotes" placeholder="Reference: https://www.sony.com/camera"></textarea>
+        <div class="field-hint">Paste links directly — they become clickable, and image links appear as pictures.</div>
+      </div>
+
+      <div class="field">
+        <label for="dreamPhoto">Photo</label>
+        <input type="file" id="dreamPhoto" accept="image/*">
+        <div class="photo-preview-wrap" id="photoPreviewWrap" style="display:none;">
+          <img id="photoPreview" alt="">
+          <button type="button" class="btn-ghost-sm" id="removePhotoBtn">Remove</button>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn-ghost" id="cancelAdd">Cancel</button>
+        <button type="submit" class="btn-primary" id="saveDreamBtn">Save Dream</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-overlay" id="confirmOverlay">
+  <div class="modal modal-confirm">
+    <p class="label">Just checking</p>
+    <h2 class="modal-title">Let this one go?</h2>
+    <p class="confirm-text">
+      You're about to remove <strong id="confirmName"></strong> from your planner.
+      <span class="confirm-sub">This cannot be undone.</span>
+    </p>
+    <div class="modal-actions">
+      <button type="button" class="btn-ghost" id="confirmCancel">Keep it</button>
+      <button type="button" class="btn-danger-solid" id="confirmDelete">Remove</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const USER_NAME = 'Anuka';
+  const STORAGE_KEY = 'dreamreel_goals';
+  const FUNDING_KEY = 'dreamreel_funding_log';
+  const GOAL_KEY = 'dreamreel_monthly_goal';
+  const WALLET_KEY = 'dreamreel_wallet';
+  const THEME_KEY = 'dreamreel_theme';
+  const WALLET_MIGRATED_KEY = 'dreamreel_wallet_v2';
+
+  const seedGoals = [
+    { id: rid(), name: 'Sony A7 IV Camera', type: 'item', priority: 'high', icon: '',
+      target: 70000, saved: 18000,
+      notes: 'Reference: https://www.sony.com/camera, saw a review here https://youtube.com/xyz that convinced me.',
+      why: 'The thing that will capture my memories.',
+      tags: [], eventDate: '2026-12-10', eventLocation: '', photo: '', checklist: [],
+      createdAt: Date.now() - 864e5 * 124 },
+    { id: rid(), name: 'MacBook Pro', type: 'item', priority: 'high', icon: '',
+      target: 120000, saved: 40000, notes: '', why: 'To build things from anywhere.',
+      tags: [], eventDate: '2027-03-01', eventLocation: '', photo: '', checklist: [],
+      createdAt: Date.now() - 864e5 * 30 },
+    { id: rid(), name: 'Dream Wardrobe', type: 'item', priority: 'medium', icon: '',
+      target: 25000, saved: 6000, notes: '', why: 'To feel like myself on the outside too.',
+      tags: [], eventDate: '', eventLocation: '', photo: '', checklist: [],
+      createdAt: Date.now() - 864e5 * 8 },
+    { id: rid(), name: 'Goa Trip', type: 'experience', priority: 'medium', icon: '',
+      target: 40000, saved: 15000, notes: 'Flight deals tracked at https://www.google.com/flights',
+      why: 'A reunion before everyone scatters again.',
+      tags: ['Friends', 'Travel', 'Food'], eventDate: '2026-11-01', eventLocation: '', photo: '', checklist: [],
+      createdAt: Date.now() - 864e5 * 40 },
+    { id: rid(), name: 'Europe Trip', type: 'experience', priority: 'low', icon: '',
+      target: 150000, saved: 20000, notes: '', why: 'The big one — no rush, just dreaming for now.',
+      tags: ['Someday', 'Travel'], eventDate: '', eventLocation: '', photo: '', checklist: [],
+      createdAt: Date.now() - 864e5 * 60 },
+    { id: rid(), name: "Friend's Birthday", type: 'celebration', priority: 'medium', icon: '',
+      target: 3000, saved: 3000, notes: '', why: 'She never lets me forget mine.',
+      tags: [], eventDate: '2026-08-30', eventLocation: '', photo: '', checklist: [],
+      createdAt: Date.now() - 864e5 * 3 },
+    { id: rid(), name: 'Dinner Reservation', type: 'celebration', priority: 'low', icon: '',
+      target: 2000, saved: 500, notes: '', why: '',
+      tags: [], eventDate: '2026-09-15', eventLocation: 'Le Ciel Rooftop', photo: '', checklist: [],
+      createdAt: Date.now() - 864e5 * 2 },
+    { id: rid(), name: 'Birthday Dinner', type: 'celebration', priority: 'high', icon: '',
+      target: 8000, saved: 5000,
+      notes: 'Venue shortlist: https://www.thevenuebook.com/listing/42 — needs deposit by next month.',
+      why: 'A night to remember, because she deserves it.',
+      tags: [], eventDate: '2026-09-12', eventLocation: 'The Grand Hall, Downtown', photo: '',
+      checklist: [ { id: rid(), text: 'Book restaurant', done: true }, { id: rid(), text: 'Buy gift', done: false } ],
+      createdAt: Date.now() - 864e5 * 5 }
+  ];
+
+  function rid() { return 'g_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36); }
+
+  // Storage can be blocked entirely (file:// in some browsers) — never let that break the app.
+  function safeGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function safeSet(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* in-memory only */ } }
+
+  function loadGoals() {
+    const raw = safeGet(STORAGE_KEY);
+    if (raw) { try { return JSON.parse(raw); } catch (e) {} }
+    saveGoals(seedGoals); return seedGoals;
+  }
+  function saveGoals(g) { safeSet(STORAGE_KEY, JSON.stringify(g)); }
+  function loadFundingLog() {
+    const raw = safeGet(FUNDING_KEY);
+    if (raw) { try { return JSON.parse(raw); } catch (e) {} }
+    return [];
+  }
+  function saveFundingLog() { safeSet(FUNDING_KEY, JSON.stringify(fundingLog)); }
+  function loadWallet() {
+    const raw = safeGet(WALLET_KEY);
+    let list = [];
+    if (raw) { try { list = JSON.parse(raw); } catch (e) { list = []; } }
+    // One-time cleanup: money moved into a jar used to be written here as its own
+    // entry. It is now derived from what each jar holds, so drop the old ones or
+    // they would be counted twice.
+    if (!safeGet(WALLET_MIGRATED_KEY)) {
+      list = list.filter(e => !/^(Toward|Returned from) /.test(e.note || ''));
+      safeSet(WALLET_KEY, JSON.stringify(list));
+      safeSet(WALLET_MIGRATED_KEY, '1');
+    }
+    return list;
+  }
+  function saveWallet() { safeSet(WALLET_KEY, JSON.stringify(walletLog)); }
+
+  let goals = loadGoals();
+  let fundingLog = loadFundingLog();
+  let walletLog = loadWallet();
+  let monthlyGoal = Number(safeGet(GOAL_KEY)) || 10000;
+  let activePage = 'home';
+  let pendingPhoto = '';
+
+  /* ---------- helpers ---------- */
+  function escapeHtml(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+  function linkify(text) {
+    if (!text) return '';
+    const re = /(https?:\/\/[^\s<>"']+)/gi, trail = /[).,!?;:'"\]]+$/;
+    const parts = String(text).split(re); let html = '';
+    for (let i = 0; i < parts.length; i++) {
+      if (i % 2 === 0) { html += escapeHtml(parts[i]); continue; }
+      let url = parts[i], tail = '';
+      const m = url.match(trail);
+      if (m) { tail = m[0]; url = url.slice(0, -tail.length); }
+      if (url) { const s = escapeHtml(url); html += `<a href="${s}" target="_blank" rel="noopener noreferrer" class="note-link">${s}</a>`; }
+      html += escapeHtml(tail);
+    }
+    return html;
+  }
+  const IMG_RE = /\.(jpe?g|png|gif|webp|avif|bmp|svg)(\?[^\s]*)?$/i;
+  function extractUrls(t) {
+    if (!t) return [];
+    return (String(t).match(/https?:\/\/[^\s<>"']+/gi) || [])
+      .map(u => u.replace(/[).,!?;:'"\]]+$/, '')).filter(u => /^https?:\/\//i.test(u));
+  }
+  // Only direct image links can be shown; a page's preview image needs a server to read.
+  function imageUrlsIn(t) { return extractUrls(t).filter(u => IMG_RE.test(u)); }
+  function photoFor(g) { return g.photo || imageUrlsIn(g.notes)[0] || ''; }
+
+  function formatMoney(n) { return '₹' + Math.round(Number(n) || 0).toLocaleString('en-IN'); }
+  function todayStr() { return new Date().toISOString().slice(0, 10); }
+  function fullDate(s) { const d = new Date(s + 'T00:00:00'); return isNaN(d) ? '' : d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }); }
+  function monthLabel(s) { const d = new Date(s + 'T00:00:00'); return isNaN(d) ? '' : d.toLocaleDateString(undefined, { month: 'long', year: 'numeric' }); }
+  function dayNum(s) { const d = new Date(s + 'T00:00:00'); return isNaN(d) ? '' : d.getDate(); }
+  function weekdayShort(s) { const d = new Date(s + 'T00:00:00'); return isNaN(d) ? '' : d.toLocaleDateString(undefined, { weekday: 'short' }); }
+
+  function hasIcon(g) { return !!(g.icon || '').trim(); }
+  function iconFor(g) { return (g.icon || '').trim(); }
+  function pctFor(g) { return g.target > 0 ? Math.min(100, Math.round((g.saved / g.target) * 100)) : 0; }
+  function stampFor(p) {
+    if (p >= 100) return { key: 'achieved', text: 'complete' };
+    if (p >= 70) return { key: 'almost', text: 'almost there' };
+    return { key: 'slow', text: 'saving slowly' };
+  }
+  function starsHtml(p) {
+    const n = p === 'high' ? 3 : p === 'low' ? 1 : 2;
+    return `<span class="stars-filled">${'★'.repeat(n)}</span><span class="stars-empty">${'☆'.repeat(3 - n)}</span>`;
+  }
+  function nextMilestone(g) {
+    const p = pctFor(g);
+    if (p >= 100) return null;
+    const nx = [25, 50, 75, 100].find(t => t > p) || 100;
+    return { pct: nx, amount: Math.max(0, Math.ceil(g.target * nx / 100) - g.saved) };
+  }
+  function totalSaved() { return goals.reduce((s, g) => s + (Number(g.saved) || 0), 0); }
+  function savedThisMonth() {
+    const k = new Date().toISOString().slice(0, 7);
+    return fundingLog.filter(e => e.date.slice(0, 7) === k).reduce((s, e) => s + e.amount, 0);
+  }
+
+  /* ---------- theme ---------- */
+  const themeBtn = document.getElementById('themeToggle');
+  function applyTheme(t) {
+    document.documentElement.setAttribute('data-theme', t);
+    themeBtn.textContent = t === 'dark' ? '☀' : '☾';
+    themeBtn.title = t === 'dark' ? 'Switch to light' : 'Switch to dark';
+  }
+  applyTheme(document.documentElement.getAttribute('data-theme') || 'light');
+  themeBtn.addEventListener('click', () => {
+    const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    applyTheme(next);
+    safeSet(THEME_KEY, next);
+  });
+
+  let toastTimer = null;
+  function toast(msg) {
+    const old = document.querySelector('.toast');
+    if (old) old.remove();
+    clearTimeout(toastTimer);
+    const el = document.createElement('div');
+    el.className = 'toast';
+    el.textContent = msg;
+    document.body.appendChild(el);
+    toastTimer = setTimeout(() => el.remove(), 3500);
+  }
+
+  /* a shower of petals when something is fully funded */
+  const PETAL_COLORS = ['#FFE4E1', '#F6CFCB', '#BF7E81', '#B79EA1', '#9A5D61'];
+  function petalShower() {
+    const layer = document.getElementById('petalFall');
+    for (let i = 0; i < 24; i++) {
+      const p = document.createElement('span');
+      p.className = 'fall-petal';
+      p.style.left = (34 + Math.random() * 32) + '%';
+      p.style.top = '16%';
+      p.style.background = PETAL_COLORS[i % PETAL_COLORS.length];
+      p.style.setProperty('--dx', ((Math.random() - 0.5) * 320).toFixed(0) + 'px');
+      p.style.setProperty('--rot', (300 + Math.random() * 500).toFixed(0) + 'deg');
+      p.style.setProperty('--dur', (2 + Math.random() * 1.5).toFixed(2) + 's');
+      layer.appendChild(p);
+      setTimeout(() => p.remove(), 3600);
+    }
+  }
+
+  /* ---------- card ---------- */
+  function checklistHtml(g) {
+    const items = g.checklist || [];
+    return `<div class="checklist">
+      ${items.map(i => `<label class="checklist-item ${i.done ? 'done' : ''}">
+        <input type="checkbox" class="checklist-toggle" data-goal="${g.id}" data-item="${i.id}" ${i.done ? 'checked' : ''}>
+        <span>${escapeHtml(i.text)}</span>
+        <button type="button" class="checklist-remove" data-goal="${g.id}" data-item="${i.id}">×</button>
+      </label>`).join('')}
+      <input type="text" class="checklist-input" data-goal="${g.id}" placeholder="add a to-do, press Enter">
+    </div>`;
+  }
+
+  function cardHtml(g, draggable, isFocus) {
+    const pct = pctFor(g);
+    const complete = g.saved >= g.target && g.target > 0;
+    const typeLabel = g.type === 'item' ? 'Thing' : g.type === 'experience' ? 'Experience' : 'Celebration';
+    const stamp = stampFor(pct);
+    const ms = isFocus ? nextMilestone(g) : null;
+    const hero = photoFor(g);
+    const extras = imageUrlsIn(g.notes).filter(u => u !== hero);
+    return `
+      <div class="dream-card" data-id="${g.id}"${draggable ? ' draggable="true"' : ''}>
+        ${hero ? `<div class="card-photo"><img src="${escapeHtml(hero)}" alt="" loading="lazy" onerror="this.closest('.card-photo').remove()"></div>` : ''}
+        <h3 class="card-name">${hasIcon(g) ? escapeHtml(iconFor(g)) + ' ' : ''}${escapeHtml(g.name)}</h3>
+        ${g.why ? `<p class="card-quote">"${escapeHtml(g.why)}"</p>` : ''}
+        <div class="card-tags">
+          <span class="tag type-${g.type}">${typeLabel}</span>
+          <span class="priority-stars">${starsHtml(g.priority || 'medium')}</span>
+        </div>
+        ${g.eventDate ? `<p class="card-date">${escapeHtml(fullDate(g.eventDate))}${g.eventLocation ? ' · ' + escapeHtml(g.eventLocation) : ''}</p>` : ''}
+        <p class="card-amounts"><b>${formatMoney(g.saved)}</b> <span>/ ${formatMoney(g.target)}</span></p>
+        <div class="progress-track"><div class="progress-fill ${complete ? 'complete' : ''}" style="width:${pct}%"></div></div>
+        <div class="card-meta-row">
+          <span class="progress-pct">${pct}% saved</span>
+          <span class="stamp stamp-${stamp.key}">${stamp.text}</span>
+        </div>
+        ${ms ? `<p class="milestone-note">${formatMoney(ms.amount)} more to reach ${ms.pct}%</p>` : ''}
+        ${g.tags && g.tags.length ? `<div class="tag-row">${g.tags.map(t => `<span class="chip">${escapeHtml(t)}</span>`).join('')}</div>` : ''}
+        ${g.notes ? `<div class="notes">${linkify(g.notes)}</div>` : ''}
+        ${extras.length ? `<div class="link-images">${extras.map(u => `<a href="${escapeHtml(u)}" target="_blank" rel="noopener noreferrer" class="link-image"><img src="${escapeHtml(u)}" alt="" loading="lazy" onerror="this.closest('.link-image').remove()"></a>`).join('')}</div>` : ''}
+        ${g.type !== 'item' ? checklistHtml(g) : ''}
+        <div class="card-actions">
+          <div class="add-funds-row">
+            <input type="number" min="0" step="0.01" placeholder="Add ₹" class="fund-input" data-id="${g.id}">
+            <button class="icon-btn add-fund-btn" data-id="${g.id}" title="Add">+</button>
+          </div>
+          <button class="icon-btn edit-btn" data-id="${g.id}" title="Edit">✎</button>
+          <button class="icon-btn delete delete-btn" data-id="${g.id}" title="Remove">×</button>
+        </div>
+      </div>`;
+  }
+
+  function emptyStateHtml(t, s) {
+    return `<div class="empty-state"><h2>${escapeHtml(t)}</h2><p>${escapeHtml(s)}</p>
+      <button class="btn-primary empty-add-btn" type="button">+ Add your first dream</button></div>`;
+  }
+
+  function refreshActivePage() {
+    if (activePage === 'home') renderHome();
+    else if (activePage === 'wallet') renderWallet();
+    else if (activePage === 'priority') renderPriority();
+    else if (activePage === 'events') renderEvents();
+    else if (activePage === 'calendar') renderCalendar();
+  }
+
+  function attachCardListeners(box) {
+    box.querySelectorAll('.add-fund-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.id;
+        const input = box.querySelector(`.fund-input[data-id="${id}"]`);
+        const amt = parseFloat(input.value);
+        if (!isNaN(amt) && amt > 0) {
+          const g = goals.find(x => x.id === id);
+          if (g) {
+            // money put into a dream comes out of the wallet
+            const bal = walletBalance();
+            if (amt > bal) {
+              toast(bal > 0
+                ? `Only ${formatMoney(bal)} in your wallet — add more there first.`
+                : 'Your wallet is empty — add money to it first.');
+              return;
+            }
+            const wasComplete = g.saved >= g.target;
+            g.saved = Math.round((g.saved + amt) * 100) / 100;
+            saveGoals(goals);
+            fundingLog.push({ amount: amt, date: todayStr(), goalId: g.id, goalName: g.name });
+            saveFundingLog();
+            if (!wasComplete && g.saved >= g.target) petalShower();
+            toast(`${formatMoney(amt)} moved to ${g.name} · wallet now ${formatMoney(walletBalance())}`);
+            refreshActivePage();
+          }
+        }
+      });
+    });
+    box.querySelectorAll('.fund-input').forEach(i => {
+      i.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); box.querySelector(`.add-fund-btn[data-id="${i.dataset.id}"]`).click(); } });
+    });
+    box.querySelectorAll('.edit-btn').forEach(b => b.addEventListener('click', () => openModalForEdit(b.dataset.id)));
+    box.querySelectorAll('.delete-btn').forEach(b => b.addEventListener('click', () => requestDelete(b.dataset.id)));
+    box.querySelectorAll('.checklist-toggle').forEach(cb => {
+      cb.addEventListener('change', () => {
+        const g = goals.find(x => x.id === cb.dataset.goal);
+        const it = g && (g.checklist || []).find(i => i.id === cb.dataset.item);
+        if (it) { it.done = cb.checked; saveGoals(goals); refreshActivePage(); }
+      });
+    });
+    box.querySelectorAll('.checklist-remove').forEach(b => {
+      b.addEventListener('click', () => {
+        const g = goals.find(x => x.id === b.dataset.goal);
+        if (g) { g.checklist = (g.checklist || []).filter(i => i.id !== b.dataset.item); saveGoals(goals); refreshActivePage(); }
+      });
+    });
+    box.querySelectorAll('.checklist-input').forEach(i => {
+      i.addEventListener('keydown', e => {
+        if (e.key === 'Enter' && i.value.trim()) {
+          e.preventDefault();
+          const g = goals.find(x => x.id === i.dataset.goal);
+          if (g) { (g.checklist = g.checklist || []).push({ id: rid(), text: i.value.trim(), done: false }); saveGoals(goals); refreshActivePage(); }
+        }
+      });
+    });
+  }
+
+  /* ---------- Home ---------- */
+  const COLLECTIONS = [
+    { type: 'item', name: 'Things I Want', sub: 'objects to save up for', unit: 'wishes' },
+    { type: 'experience', name: 'Places To Go', sub: 'trips waiting to happen', unit: 'journeys' },
+    { type: 'celebration', name: 'Celebrations', sub: 'days worth remembering', unit: 'occasions' }
+  ];
+  const COLLECTION_TINT = { item: 'var(--blush)', experience: 'rgba(183,158,161,.5)', celebration: 'var(--rose)' };
+
+  function renderHome() {
+    document.getElementById('heroSum').textContent = formatMoney(totalSaved());
+    const hour = new Date().getHours();
+    const word = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+    document.getElementById('greetingText').textContent = `${word}, ${USER_NAME}`;
+
+    const rank = { high: 0, medium: 1, low: 2 };
+    const open = goals.filter(g => g.saved < g.target).sort((a, b) => {
+      const p = rank[a.priority || 'medium'] - rank[b.priority || 'medium'];
+      return p !== 0 ? p : pctFor(b) - pctFor(a);
+    });
+
+    document.getElementById('savingList').innerHTML = open.slice(0, 3).map(g =>
+      `<p class="saving-item"><i>❧</i>${escapeHtml(g.name)}</p>`).join('')
+      || `<p class="empty-hint">Nothing in progress yet.</p>`;
+
+    const oldest = goals.length ? Math.min(...goals.map(g => g.createdAt)) : Date.now();
+    const days = Math.max(0, Math.floor((Date.now() - oldest) / 864e5));
+    document.getElementById('daysCloser').textContent = `${days} days closer to your dreams`;
+
+    renderCollections();
+
+    const focusEl = document.getElementById('focusCard');
+    if (open.length) {
+      focusEl.innerHTML = `<div class="grid" style="grid-template-columns:minmax(262px,400px);justify-content:center">${cardHtml(open[0], false, true)}</div>`;
+      attachCardListeners(focusEl);
+    } else if (goals.length) {
+      focusEl.innerHTML = `<p class="empty-hint">Everything is funded. Time to dream up something new.</p>`;
+    } else {
+      focusEl.innerHTML = emptyStateHtml('Nothing in focus yet', 'Add your first dream and it will live here.');
+    }
+
+    renderLedger();
+
+    const upcoming = goals.filter(g => g.eventDate && g.eventDate >= todayStr())
+      .sort((a, b) => a.eventDate.localeCompare(b.eventDate)).slice(0, 5);
+    document.getElementById('upcomingList').innerHTML = upcoming.length
+      ? upcoming.map(g => {
+          const left = Math.max(0, g.target - g.saved);
+          return `<div class="event-row">
+            <div class="event-day"><b>${dayNum(g.eventDate)}</b><small>${escapeHtml(weekdayShort(g.eventDate))}</small></div>
+            <div>
+              <h3 class="event-name">${hasIcon(g) ? escapeHtml(iconFor(g)) + ' ' : ''}${escapeHtml(g.name)}</h3>
+              <p class="event-meta">${escapeHtml(monthLabel(g.eventDate))}</p>
+            </div>
+            <div class="event-side"><span class="event-meta">${left > 0 ? formatMoney(left) + ' to go' : 'fully saved'}</span></div>
+          </div>`;
+        }).join('')
+      : `<p class="empty-hint">Nothing coming up — give a dream a date and it will appear here.</p>`;
+
+    document.getElementById('reflectionNote').textContent = monthlyReflection();
+
+    const recent = [...goals].sort((a, b) => b.createdAt - a.createdAt).slice(0, 3);
+    const rg = document.getElementById('recentGrid');
+    rg.innerHTML = recent.length ? recent.map(g => cardHtml(g)).join('') : emptyStateHtml('Nothing here yet', 'Start collecting little dreams.');
+    attachCardListeners(rg);
+  }
+
+  function renderCollections() {
+    const el = document.getElementById('collections');
+    el.innerHTML = COLLECTIONS.map((c, i) => {
+      const items = goals.filter(g => g.type === c.type);
+      const photo = items.map(photoFor).find(Boolean) || '';
+      const ring = photo
+        ? `<div class="collection-ring" style="background-image:url('${escapeHtml(photo)}')"></div>`
+        : `<div class="collection-ring" style="background:${COLLECTION_TINT[c.type]}"></div>`;
+      return `<div class="collection" data-type="${c.type}" style="animation-delay:${i * 0.07}s">
+        ${ring}
+        <h3 class="collection-name">${c.name}</h3>
+        <p class="collection-sub">${c.sub}</p>
+        <p class="collection-count">${items.length} ${items.length === 1 ? c.unit.replace(/e?s$/, '') : c.unit}</p>
+      </div>`;
+    }).join('');
+  }
+
+  function renderLedger() {
+    document.getElementById('ledgerTotal').textContent = formatMoney(totalSaved());
+    document.getElementById('monthlyGoalDisplay').textContent = formatMoney(monthlyGoal);
+    const d = savedThisMonth();
+    document.getElementById('monthDelta').textContent = (d > 0 ? '+' : '') + formatMoney(d);
+    const closer = goals.filter(g => g.saved > 0 && g.saved < g.target).length;
+    document.getElementById('ledgerFoot').textContent = closer
+      ? `${closer} dream${closer === 1 ? '' : 's'} getting closer`
+      : 'every collection starts somewhere';
+  }
+
+  function monthlyReflection() {
+    const now = new Date();
+    const es = fundingLog.filter(e => e.date.slice(0, 7) === now.toISOString().slice(0, 7));
+    if (!es.length) return 'This month is just beginning — every rupee moves you closer.';
+    const total = es.reduce((s, e) => s + e.amount, 0);
+    const by = {}; es.forEach(e => { by[e.goalName] = (by[e.goalName] || 0) + e.amount; });
+    const top = Object.entries(by).sort((a, b) => b[1] - a[1])[0][0];
+    return `This ${now.toLocaleDateString(undefined, { month: 'long' })}, I saved ${formatMoney(total)} and moved closer to ${top}.`;
+  }
+
+  /* ---------- Wallet ---------- */
+  // Money you've put in, minus anything spent outside the jars.
+  function walletIn() { return walletLog.reduce((s, e) => s + e.amount, 0); }
+  // Everything currently sitting inside jars — however it got there.
+  function inJars() { return goals.reduce((s, g) => s + (Number(g.saved) || 0), 0); }
+  // What's actually left to spend. Derived, so it can never drift out of sync.
+  function walletBalance() { return Math.round((walletIn() - inJars()) * 100) / 100; }
+
+  function renderWallet() {
+    const bal = walletBalance();
+    const balEl = document.getElementById('walletBalance');
+    balEl.textContent = formatMoney(bal);
+    balEl.classList.toggle('empty', bal <= 0);
+    document.getElementById('walletIn').textContent = formatMoney(walletIn());
+    document.getElementById('walletInJars').textContent = '− ' + formatMoney(inJars());
+
+    const open = goals.filter(g => g.saved < g.target);
+    const hint = document.getElementById('walletHint');
+    if (bal <= 0) {
+      hint.textContent = 'Add what you have and it will show what you can cover.';
+    } else {
+      const affordable = open.filter(g => (g.target - g.saved) <= bal).length;
+      hint.textContent = affordable
+        ? `Enough to finish ${affordable} dream${affordable === 1 ? '' : 's'} right now.`
+        : 'Every bit counts — put some toward a dream below.';
+    }
+
+    // what this could cover: nearest-to-done first, so small wins surface
+    const covers = document.getElementById('walletCovers');
+    const rank = { high: 0, medium: 1, low: 2 };
+    const list = [...open].sort((a, b) => {
+      const p = rank[a.priority || 'medium'] - rank[b.priority || 'medium'];
+      return p !== 0 ? p : (a.target - a.saved) - (b.target - b.saved);
+    });
+    covers.innerHTML = list.length ? list.map(g => {
+      const need = Math.max(0, g.target - g.saved);
+      const canFinish = bal >= need && bal > 0;
+      const badge = bal <= 0 ? ''
+        : canFinish ? `<span class="cover-badge yes">covers it</span>`
+        : `<span class="cover-badge partly">${Math.min(100, Math.floor(bal / need * 100))}% of it</span>`;
+      return `<div class="cover-row">
+        <div>
+          <p class="cover-name">${escapeHtml(g.name)}</p>
+          <span class="cover-meta">${formatMoney(g.saved)} of ${formatMoney(g.target)} saved</span>
+        </div>
+        <div class="cover-right">
+          ${badge}
+          <span class="cover-need">${formatMoney(need)} to go</span>
+          <button type="button" class="btn-put" data-id="${g.id}" ${bal <= 0 ? 'disabled' : ''}>Put money in</button>
+        </div>
+      </div>`;
+    }).join('') : `<p class="empty-hint">Every dream is funded — nothing left to cover.</p>`;
+
+    covers.querySelectorAll('.btn-put').forEach(b => b.addEventListener('click', () => putTowardDream(b.dataset.id)));
+
+    // history, newest first
+    const hist = document.getElementById('walletHistory');
+    const entries = [...walletLog].reverse();
+    hist.innerHTML = entries.length ? entries.map(e => `
+      <div class="wallet-entry">
+        <div>
+          <span class="wallet-entry-note">${escapeHtml(e.note || (e.amount >= 0 ? 'Added' : 'Spent'))}</span>
+          <span class="wallet-entry-date">${escapeHtml(e.date)}</span>
+        </div>
+        <div class="wallet-entry-right">
+          <span class="wallet-entry-amt ${e.amount >= 0 ? 'in' : 'out'}">${e.amount >= 0 ? '+' : '−'}${formatMoney(Math.abs(e.amount))}</span>
+          <button class="icon-btn delete wallet-del" data-id="${e.id}" title="Remove entry">×</button>
+        </div>
+      </div>`).join('') : `<p class="empty-hint">No entries yet.</p>`;
+
+    hist.querySelectorAll('.wallet-del').forEach(b => b.addEventListener('click', () => {
+      walletLog = walletLog.filter(e => e.id !== b.dataset.id);
+      saveWallet(); renderWallet();
+    }));
+  }
+
+  function addWalletEntry(amount, note) {
+    walletLog.push({ id: rid(), amount, note: (note || '').trim(), date: todayStr() });
+    saveWallet();
+    renderWallet();
+  }
+
+  // move money out of the wallet and into a dream, in one step
+  function putTowardDream(id) {
+    const g = goals.find(x => x.id === id);
+    if (!g) return;
+    const bal = walletBalance();
+    const need = Math.max(0, g.target - g.saved);
+    const amount = Math.min(bal, need);
+    if (amount <= 0) return;
+
+    const wasComplete = g.saved >= g.target;
+    g.saved = Math.round((g.saved + amount) * 100) / 100;
+    saveGoals(goals);
+    fundingLog.push({ amount, date: todayStr(), goalId: g.id, goalName: g.name });
+    saveFundingLog();
+    if (!wasComplete && g.saved >= g.target) petalShower();
+    toast(`${formatMoney(amount)} moved to ${g.name} · wallet now ${formatMoney(walletBalance())}`);
+    renderWallet();
+  }
+
+  document.getElementById('walletForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const amtEl = document.getElementById('walletAmount');
+    const noteEl = document.getElementById('walletNote');
+    const amt = parseFloat(amtEl.value);
+    if (isNaN(amt) || amt <= 0) return;
+    addWalletEntry(amt, noteEl.value);
+    amtEl.value = ''; noteEl.value = ''; amtEl.focus();
+  });
+
+  document.getElementById('walletSpend').addEventListener('click', () => {
+    const amtEl = document.getElementById('walletAmount');
+    const noteEl = document.getElementById('walletNote');
+    const amt = parseFloat(amtEl.value);
+    if (isNaN(amt) || amt <= 0) return;
+    addWalletEntry(-amt, noteEl.value);
+    amtEl.value = ''; noteEl.value = ''; amtEl.focus();
+  });
+
+  /* ---------- Priority ---------- */
+  const BANDS = [
+    { key: 'high', title: 'Must Have', sub: 'first in line' },
+    { key: 'medium', title: 'Nice To Have', sub: 'soon, but not yet' },
+    { key: 'low', title: 'Someday', sub: 'no rush at all' }
+  ];
+
+  function renderPriority() {
+    const el = document.getElementById('board');
+    el.innerHTML = BANDS.map(b => {
+      const items = goals.filter(g => (g.priority || 'medium') === b.key).sort((a, b2) => b2.createdAt - a.createdAt);
+      return `<div class="board-col" data-priority="${b.key}">
+        <h2 class="board-title p-${b.key}">${b.title}</h2>
+        <p class="board-sub">${b.sub}</p>
+        <div class="board-list">
+          ${items.length ? items.map(g => cardHtml(g, true)).join('') : `<p class="empty-hint">Nothing here yet.</p>`}
+        </div>
+      </div>`;
+    }).join('');
+    attachCardListeners(el);
+    attachDragListeners();
+  }
+
+  function attachDragListeners() {
+    document.querySelectorAll('.dream-card[draggable="true"]').forEach(card => {
+      card.addEventListener('dragstart', e => { e.dataTransfer.setData('text/plain', card.dataset.id); card.classList.add('dragging'); });
+      card.addEventListener('dragend', () => card.classList.remove('dragging'));
+    });
+    document.querySelectorAll('.board-col').forEach(col => {
+      col.addEventListener('dragover', e => { e.preventDefault(); col.classList.add('drag-over'); });
+      col.addEventListener('dragleave', () => col.classList.remove('drag-over'));
+      col.addEventListener('drop', e => {
+        e.preventDefault(); col.classList.remove('drag-over');
+        const g = goals.find(x => x.id === e.dataTransfer.getData('text/plain'));
+        if (g && g.priority !== col.dataset.priority) { g.priority = col.dataset.priority; saveGoals(goals); }
+        renderPriority();
+      });
+    });
+  }
+
+  /* ---------- Events ---------- */
+  function renderEvents() {
+    const el = document.getElementById('eventsList');
+    const dated = goals.filter(g => g.eventDate).sort((a, b) => a.eventDate.localeCompare(b.eventDate));
+    const undated = goals.filter(g => !g.eventDate);
+    if (!dated.length && !undated.length) {
+      el.innerHTML = emptyStateHtml('No events yet', 'Give a dream a date and it will show up here.');
+      attachCardListeners(el); return;
+    }
+    let html = '', lastMonth = '';
+    dated.forEach(g => {
+      const m = monthLabel(g.eventDate);
+      if (m !== lastMonth) { html += `<p class="month-head">${escapeHtml(m)}</p>`; lastMonth = m; }
+      html += eventRow(g, dayNum(g.eventDate), weekdayShort(g.eventDate));
+    });
+    if (undated.length) {
+      html += `<p class="month-head">No date yet</p>`;
+      undated.forEach(g => { html += eventRow(g, '·', ''); });
+    }
+    el.innerHTML = html;
+    attachCardListeners(el);
+  }
+
+  function eventRow(g, day, wd) {
+    return `<div class="event-row" data-id="${g.id}">
+      <div class="event-day"><b>${day}</b>${wd ? `<small>${escapeHtml(wd)}</small>` : ''}</div>
+      <div>
+        <h3 class="event-name">${hasIcon(g) ? escapeHtml(iconFor(g)) + ' ' : ''}${escapeHtml(g.name)}</h3>
+        ${g.why ? `<p class="event-why">"${escapeHtml(g.why)}"</p>` : ''}
+        <p class="event-meta">${g.eventLocation ? escapeHtml(g.eventLocation) + ' · ' : ''}${formatMoney(g.saved)} of ${formatMoney(g.target)} saved</p>
+      </div>
+      <div class="event-side">
+        <span class="priority-stars">${starsHtml(g.priority || 'medium')}</span>
+        <div class="event-actions">
+          <button class="icon-btn edit-btn" data-id="${g.id}" title="Edit">✎</button>
+          <button class="icon-btn delete delete-btn" data-id="${g.id}" title="Remove">×</button>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  /* ---------- Calendar ---------- */
+  let calendarMonth = new Date(); calendarMonth.setDate(1);
+  let selectedCalendarDate = null;
+  let justAddedDate = null;
+
+  function renderCalendar() {
+    const year = calendarMonth.getFullYear(), month = calendarMonth.getMonth();
+    document.getElementById('calMonth').textContent = calendarMonth.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+
+    const prefix = `${year}-${String(month + 1).padStart(2, '0')}`;
+    const start = new Date(year, month, 1).getDay();
+    const days = new Date(year, month + 1, 0).getDate();
+    const byDate = {};
+    goals.forEach(g => { if (g.eventDate) (byDate[g.eventDate] = byDate[g.eventDate] || []).push(g); });
+
+    let html = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => `<div class="cal-head">${d}</div>`).join('');
+    for (let i = 0; i < start; i++) html += `<div class="cal-cell blank"></div>`;
+    for (let d = 1; d <= days; d++) {
+      const ds = `${prefix}-${String(d).padStart(2, '0')}`;
+      const evs = byDate[ds] || [];
+      const cls = ['cal-cell'];
+      if (ds === todayStr()) cls.push('today');
+      if (ds === selectedCalendarDate) cls.push('selected');
+      if (ds === justAddedDate) cls.push('just-added');
+      html += `<div class="${cls.join(' ')}" data-date="${ds}">
+        <span class="cal-num">${d}</span>
+        <span class="cal-dots">${evs.slice(0, 3).map(g => `<span class="cal-dot type-${g.type}"></span>`).join('')}</span>
+      </div>`;
+    }
+    const grid = document.getElementById('calGrid');
+    grid.innerHTML = html;
+    grid.querySelectorAll('.cal-cell[data-date]').forEach(c => c.addEventListener('click', () => showCalendarDay(c.dataset.date)));
+
+    justAddedDate = null; // one-shot highlight
+    if (selectedCalendarDate) showCalendarDay(selectedCalendarDate);
+    else document.getElementById('calendarDayDetail').innerHTML = '';
+  }
+
+  function showCalendarDay(ds) {
+    selectedCalendarDate = ds;
+    document.querySelectorAll('.cal-cell[data-date]').forEach(c => c.classList.toggle('selected', c.dataset.date === ds));
+    const dayGoals = goals.filter(g => g.eventDate === ds);
+    const detail = document.getElementById('calendarDayDetail');
+    detail.innerHTML = `
+      <div class="day-detail-head">
+        <h3 class="day-detail-title">${escapeHtml(fullDate(ds))}</h3>
+        <button type="button" class="btn-ghost cal-add-btn">+ Add on this day</button>
+      </div>
+      ${dayGoals.length ? `<div class="grid">${dayGoals.map(g => cardHtml(g)).join('')}</div>`
+        : `<p class="empty-hint">Nothing planned yet — add something to this day.</p>`}`;
+    attachCardListeners(detail);
+    detail.querySelector('.cal-add-btn').addEventListener('click', () => openModalForAddOnDate(ds));
+  }
+
+  /* ---------- nav ---------- */
+  function showPage(p) {
+    activePage = p;
+    document.querySelectorAll('.navlink').forEach(t => t.classList.toggle('active', t.dataset.page === p));
+    ['home','wallet','priority','events','calendar'].forEach(k => {
+      document.getElementById('page-' + k).style.display = k === p ? 'block' : 'none';
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    refreshActivePage();
+  }
+  document.querySelectorAll('.navlink').forEach(b => b.addEventListener('click', () => showPage(b.dataset.page)));
+  document.getElementById('calPrev').addEventListener('click', () => { calendarMonth.setMonth(calendarMonth.getMonth() - 1); renderCalendar(); });
+  document.getElementById('calNext').addEventListener('click', () => { calendarMonth.setMonth(calendarMonth.getMonth() + 1); renderCalendar(); });
+  document.querySelector('main').addEventListener('click', e => { if (e.target.closest('.empty-add-btn')) openModalForAdd(); });
+  document.getElementById('collections').addEventListener('click', e => {
+    const c = e.target.closest('.collection');
+    if (c) showPage(c.dataset.type === 'item' ? 'priority' : 'events');
+  });
+
+  document.getElementById('monthlyGoalDisplay').addEventListener('click', function () {
+    if (this.querySelector('input')) return;
+    const cur = monthlyGoal;
+    this.innerHTML = `<input type="number" min="0" step="100" value="${cur}">`;
+    const input = this.querySelector('input');
+    input.focus(); input.select();
+    const commit = () => {
+      const v = parseFloat(input.value);
+      monthlyGoal = (!isNaN(v) && v >= 0) ? v : cur;
+      safeSet(GOAL_KEY, String(monthlyGoal));
+      renderLedger();
+    };
+    input.addEventListener('blur', commit);
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+      if (e.key === 'Escape') { input.value = cur; input.blur(); }
+    });
+  });
+
+  /* ---------- delete ---------- */
+  const confirmOverlay = document.getElementById('confirmOverlay');
+  let pendingDeleteId = null;
+  function requestDelete(id) {
+    const g = goals.find(x => x.id === id);
+    if (!g) return;
+    pendingDeleteId = id;
+    document.getElementById('confirmName').textContent = g.name;
+    confirmOverlay.classList.add('open');
+  }
+  function closeConfirm() { confirmOverlay.classList.remove('open'); pendingDeleteId = null; }
+  document.getElementById('confirmCancel').addEventListener('click', closeConfirm);
+  confirmOverlay.addEventListener('click', e => { if (e.target === confirmOverlay) closeConfirm(); });
+  document.getElementById('confirmDelete').addEventListener('click', () => {
+    if (!pendingDeleteId) return;
+    goals = goals.filter(g => g.id !== pendingDeleteId);
+    saveGoals(goals);
+    if (selectedCalendarDate && !goals.some(g => g.eventDate === selectedCalendarDate)) selectedCalendarDate = null;
+    closeConfirm(); refreshActivePage();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    if (confirmOverlay.classList.contains('open')) closeConfirm();
+    else if (modalOverlay.classList.contains('open')) closeModal();
+  });
+
+  /* ---------- photo ---------- */
+  function readAndDownscaleImage(file, maxW, q) {
+    return new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          const s = Math.min(1, maxW / img.width);
+          const w = Math.round(img.width * s), h = Math.round(img.height * s);
+          const c = document.createElement('canvas');
+          c.width = w; c.height = h;
+          c.getContext('2d').drawImage(img, 0, 0, w, h);
+          res(c.toDataURL('image/jpeg', q));
+        };
+        img.onerror = rej; img.src = r.result;
+      };
+      r.onerror = rej; r.readAsDataURL(file);
+    });
+  }
+  document.getElementById('dreamPhoto').addEventListener('change', async e => {
+    const f = e.target.files[0];
+    if (!f) return;
+    try { setPhotoPreview(await readAndDownscaleImage(f, 480, 0.82)); } catch (err) { setPhotoPreview(''); }
+  });
+  document.getElementById('removePhotoBtn').addEventListener('click', () => {
+    setPhotoPreview(''); document.getElementById('dreamPhoto').value = '';
+  });
+
+  /* ---------- modal ---------- */
+  const modalOverlay = document.getElementById('modalOverlay');
+  const dreamForm = document.getElementById('dreamForm');
+  let selectedType = 'item', selectedPriority = 'medium', editingId = null;
+
+  document.getElementById('openAddModal').addEventListener('click', () => openModalForAdd());
+  document.getElementById('cancelAdd').addEventListener('click', closeModal);
+  modalOverlay.addEventListener('click', e => { if (e.target === modalOverlay) closeModal(); });
+
+  function applyTypeUI(t) {
+    document.querySelectorAll('#typeSelect .pill-option').forEach(o => o.classList.toggle('selected', o.dataset.type === t));
+    document.getElementById('celebrationLocationField').style.display = t === 'celebration' ? 'block' : 'none';
+    document.getElementById('tagsField').style.display = t === 'experience' ? 'block' : 'none';
+    document.getElementById('dreamDateLabel').textContent = t === 'celebration' ? 'Event date' : 'Target date';
+  }
+  function applyPriorityUI(p) {
+    document.querySelectorAll('#prioritySelect .pill-option').forEach(o => o.classList.toggle('selected', o.dataset.priority === p));
+  }
+  function setPhotoPreview(src) {
+    pendingPhoto = src || '';
+    const w = document.getElementById('photoPreviewWrap');
+    if (pendingPhoto) { document.getElementById('photoPreview').src = pendingPhoto; w.style.display = 'flex'; }
+    else w.style.display = 'none';
+  }
+  function resetForm() {
+    dreamForm.reset();
+    selectedType = 'item'; selectedPriority = 'medium';
+    setPhotoPreview(''); applyTypeUI('item'); applyPriorityUI('medium');
+  }
+  function openModalForAdd() {
+    editingId = null; resetForm();
+    document.querySelector('#modalOverlay .modal-title').textContent = 'What are we adding?';
+    document.getElementById('saveDreamBtn').textContent = 'Save Dream';
+    modalOverlay.classList.add('open');
+  }
+  // Adding straight from a calendar day: same modal, date already filled in.
+  function openModalForAddOnDate(ds) {
+    openModalForAdd();
+    document.getElementById('dreamEventDate').value = ds;
+    selectedType = 'celebration'; applyTypeUI('celebration');
+    document.querySelector('#modalOverlay .modal-title').textContent = 'Add on ' + fullDate(ds);
+    document.getElementById('dreamName').focus();
+  }
+  function openModalForEdit(id) {
+    const g = goals.find(x => x.id === id);
+    if (!g) return;
+    editingId = id; resetForm();
+    selectedType = g.type; selectedPriority = g.priority || 'medium';
+    applyTypeUI(selectedType); applyPriorityUI(selectedPriority);
+    document.getElementById('dreamName').value = g.name || '';
+    document.getElementById('dreamIcon').value = g.icon || '';
+    document.getElementById('dreamEventDate').value = g.eventDate || '';
+    document.getElementById('dreamEventLocation').value = g.eventLocation || '';
+    document.getElementById('dreamTags').value = (g.tags || []).join(', ');
+    document.getElementById('dreamTarget').value = g.target;
+    document.getElementById('dreamSaved').value = g.saved;
+    document.getElementById('dreamWhy').value = g.why || '';
+    document.getElementById('dreamNotes').value = g.notes || '';
+    setPhotoPreview(g.photo || '');
+    document.querySelector('#modalOverlay .modal-title').textContent = 'Edit this dream';
+    document.getElementById('saveDreamBtn').textContent = 'Save changes';
+    modalOverlay.classList.add('open');
+  }
+  function closeModal() { modalOverlay.classList.remove('open'); editingId = null; resetForm(); }
+
+  document.getElementById('typeSelect').addEventListener('click', e => {
+    const o = e.target.closest('.pill-option'); if (!o) return;
+    selectedType = o.dataset.type; applyTypeUI(selectedType);
+  });
+  document.getElementById('prioritySelect').addEventListener('click', e => {
+    const o = e.target.closest('.pill-option'); if (!o) return;
+    selectedPriority = o.dataset.priority; applyPriorityUI(selectedPriority);
+  });
+
+  dreamForm.addEventListener('submit', e => {
+    e.preventDefault();
+    const name = document.getElementById('dreamName').value.trim();
+    const target = parseFloat(document.getElementById('dreamTarget').value) || 0;
+    const saved = parseFloat(document.getElementById('dreamSaved').value) || 0;
+    const notes = document.getElementById('dreamNotes').value;
+    const why = document.getElementById('dreamWhy').value.trim();
+    const icon = document.getElementById('dreamIcon').value.trim();
+    const eventDate = document.getElementById('dreamEventDate').value;
+    const eventLocation = selectedType === 'celebration' ? document.getElementById('dreamEventLocation').value.trim() : '';
+    const tags = selectedType === 'experience'
+      ? document.getElementById('dreamTags').value.split(',').map(t => t.trim()).filter(Boolean) : [];
+    if (!name || target <= 0) return;
+
+    if (editingId) {
+      const g = goals.find(x => x.id === editingId);
+      if (g) {
+        // changing "Saved" here moves money too: more comes out of the wallet, less goes back in
+        const delta = Math.round((saved - g.saved) * 100) / 100;
+        if (delta > 0 && delta > walletBalance()) {
+          const bal = walletBalance();
+          toast(bal > 0
+            ? `Only ${formatMoney(bal)} in your wallet — add more there first.`
+            : 'Your wallet is empty — add money to it first.');
+          return; // leave the modal open so nothing is lost
+        }
+        const wasComplete = g.saved >= g.target;
+        // keep id, createdAt and checklist; replace what the form owns
+        Object.assign(g, { name, type: selectedType, priority: selectedPriority, icon, target, saved, notes, why, tags, eventDate, eventLocation, photo: pendingPhoto });
+        if (delta !== 0) {
+          fundingLog.push({ amount: delta, date: todayStr(), goalId: g.id, goalName: g.name });
+          saveFundingLog();
+          if (delta > 0 && !wasComplete && g.saved >= g.target) petalShower();
+          toast(delta > 0
+            ? `${formatMoney(delta)} moved to ${g.name} · wallet now ${formatMoney(walletBalance())}`
+            : `${formatMoney(-delta)} returned to your wallet · now ${formatMoney(walletBalance())}`);
+        }
+      }
+    } else {
+      goals.push({ id: rid(), name, type: selectedType, priority: selectedPriority, icon,
+        target, saved, notes, why, tags, eventDate, eventLocation, photo: pendingPhoto, checklist: [], createdAt: Date.now() });
+    }
+    saveGoals(goals);
+
+    // mark it on the calendar right away: jump to that month, select the day, flag the highlight
+    if (eventDate) {
+      const d = new Date(eventDate + 'T00:00:00');
+      if (!isNaN(d)) {
+        calendarMonth = new Date(d.getFullYear(), d.getMonth(), 1);
+        selectedCalendarDate = eventDate;
+        justAddedDate = eventDate;
+      }
+    }
+    closeModal(); refreshActivePage();
+  });
+
+  renderHome();
+</script>
+</body>
+</html>
