@@ -348,6 +348,21 @@
     font-family: var(--font-label); font-size: 0.55rem; letter-spacing: 0.12em;
     text-transform: uppercase; color: var(--plum-faint);
   }
+  .target-row { display: flex; align-items: center; gap: 8px; }
+  .target-value {
+    display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+    font-family: var(--font-display); font-size: 0.95rem; letter-spacing: 0;
+    text-transform: none; color: var(--rose-deep);
+    border: 1px solid var(--line); border-radius: 999px; padding: 3px 11px;
+    transition: all 0.2s ease;
+  }
+  .target-value:hover, .target-value:focus-visible { border-color: var(--rose); background: var(--blush); outline: none; }
+  .target-pen { font-size: 0.75rem; opacity: 0.7; }
+  .target-value input {
+    width: 88px; background: var(--paper); border: none; outline: none;
+    font-family: inherit; font-size: 0.95rem; color: var(--plum); text-align: right;
+  }
+
   .savings-avail { text-align: center; font-family: var(--font-display); font-style: italic; font-size: 1.02rem; color: var(--plum-dim); margin: 14px 0 0; }
   .savings-avail b { font-style: normal; color: var(--rose-deep); font-weight: 500; }
 
@@ -677,7 +692,11 @@
         <div class="progress-track"><div class="progress-fill" id="savingsFill" style="width:0%"></div></div>
         <div class="savings-progress-meta">
           <span id="savingsPct">0%</span>
-          <span>of <span class="fund-editable" id="savingsGoalDisplay" title="Click to edit">₹0</span></span>
+          <span class="target-row">
+            Target
+            <span class="target-value" id="savingsGoalDisplay" tabindex="0" role="button"
+                  title="Click to change your target">₹0<span class="target-pen" aria-hidden="true">✎</span></span>
+          </span>
         </div>
       </div>
       <p class="wallet-note" id="savingsHint"></p>
@@ -1461,7 +1480,10 @@
     document.getElementById('savingsFill').style.width = pct + '%';
     document.getElementById('savingsFill').classList.toggle('complete', bal >= savingsGoal && savingsGoal > 0);
     document.getElementById('savingsPct').textContent = pct + '%';
-    document.getElementById('savingsGoalDisplay').textContent = formatMoney(savingsGoal);
+    const goalEl = document.getElementById('savingsGoalDisplay');
+    if (!goalEl.querySelector('input')) {
+      goalEl.innerHTML = `${formatMoney(savingsGoal)}<span class="target-pen" aria-hidden="true">✎</span>`;
+    }
     document.getElementById('savingsWalletAvail').textContent = formatMoney(free);
 
     const hint = document.getElementById('savingsHint');
@@ -1521,23 +1543,37 @@
     renderSavings();
   });
 
-  document.getElementById('savingsGoalDisplay').addEventListener('click', function () {
-    if (this.querySelector('input')) return;
+  function editSavingsTarget() {
+    const el = document.getElementById('savingsGoalDisplay');
+    if (el.querySelector('input')) return;
     const cur = savingsGoal;
-    this.innerHTML = `<input type="number" min="0" step="500" value="${cur}">`;
-    const input = this.querySelector('input');
+    el.innerHTML = `<input type="number" min="0" step="500" value="${cur}" aria-label="Savings target">`;
+    const input = el.querySelector('input');
     input.focus(); input.select();
+    let done = false;
     const commit = () => {
+      if (done) return; done = true;
       const v = parseFloat(input.value);
       savingsGoal = (!isNaN(v) && v >= 0) ? v : cur;
       safeSet(SAVINGS_GOAL_KEY, String(savingsGoal));
+      el.innerHTML = ''; // drop the field first, or renderSavings leaves it in place
       renderSavings();
+      toast(`Target set to ${formatMoney(savingsGoal)}`);
     };
     input.addEventListener('blur', commit);
     input.addEventListener('keydown', e => {
-      if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
-      if (e.key === 'Escape') { input.value = cur; input.blur(); }
+      // Keep the key inside the field: it would otherwise bubble to the
+      // container's own Enter handler and reopen the editor we just closed.
+      e.stopPropagation();
+      // commit directly rather than via blur(), which does nothing if the
+      // field never took focus
+      if (e.key === 'Enter') { e.preventDefault(); commit(); }
+      if (e.key === 'Escape') { done = true; el.innerHTML = ''; renderSavings(); }
     });
+  }
+  document.getElementById('savingsGoalDisplay').addEventListener('click', editSavingsTarget);
+  document.getElementById('savingsGoalDisplay').addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); editSavingsTarget(); }
   });
 
   /* ---------- Priority ---------- */
