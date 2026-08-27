@@ -317,6 +317,42 @@
   .icon-btn.delete:hover { background: var(--danger); border-color: var(--danger); color: var(--cream); }
 
 
+  /* ---------- Passcode gate ---------- */
+  #gate {
+    position: fixed; inset: 0; z-index: 300; display: flex;
+    align-items: center; justify-content: center; padding: 24px;
+    background: var(--cream);
+  }
+  #gate[hidden] { display: none; }
+  .gate-card {
+    background: var(--paper); border: 1px solid var(--line); border-radius: 4px;
+    width: 100%; max-width: 400px; padding: 34px; text-align: center;
+    box-shadow: 0 24px 60px var(--shadow-lift); animation: modalPop 0.35s ease;
+  }
+  .gate-jar { width: 62px; height: 62px; display: block; margin: 0 auto 14px; }
+  .gate-view { animation: modalPop 0.25s ease; }
+  .gate-title { font-family: var(--font-display); font-size: 1.75rem; font-weight: 500; margin: 6px 0 10px; }
+  .gate-title em { font-family: var(--font-fancy); font-style: italic; color: var(--rose-deep); }
+  .gate-sub { font-family: var(--font-display); font-style: italic; color: var(--plum-dim); margin: 0 0 20px; font-size: 1.05rem; line-height: 1.5; }
+  .gate-card .field { text-align: left; }
+  .gate-warn {
+    font-size: 0.78rem; color: var(--plum-faint); line-height: 1.5;
+    background: var(--cream); border: 1px solid var(--line-soft); border-radius: 3px;
+    padding: 10px 12px; margin: 0 0 18px; text-align: left;
+  }
+  .gate-actions { display: flex; gap: 10px; justify-content: center; }
+  .gate-actions button { flex: 1; }
+  .gate-error {
+    margin: 16px 0 0; font-size: 0.84rem; color: var(--danger);
+    font-family: var(--font-display); font-style: italic;
+  }
+  .recovery-code {
+    font-family: 'Montserrat', monospace; font-size: 1.15rem; letter-spacing: 0.18em;
+    color: var(--rose-deep); background: var(--cream); border: 1px dashed var(--line);
+    border-radius: 3px; padding: 16px 10px; margin: 0 0 20px; word-break: break-all;
+  }
+  .lock-btn { font-size: 0.85rem; }
+
   /* ---------- Toast ---------- */
   .toast {
     position: fixed; left: 50%; bottom: 30px; transform: translateX(-50%);
@@ -571,6 +607,91 @@
 
 <div id="petalFall"></div>
 
+<!-- Passcode gate. Hides the planner from a passing glance; it is not
+     encryption — the data still sits readable in this browser's storage. -->
+<div id="gate" hidden>
+  <div class="gate-card">
+    <svg class="gate-jar" viewBox="10 5 51 51" aria-hidden="true">
+      <clipPath id="gateJar"><path d="M21 22h22v27a6 6 0 0 1-6 6H27a6 6 0 0 1-6-6V22z"/></clipPath>
+      <path d="M21 22h22v27a6 6 0 0 1-6 6H27a6 6 0 0 1-6-6V22z" fill="#FFE4E1"/>
+      <g clip-path="url(#gateJar)"><rect x="19" y="37" width="26" height="20" fill="#BF7E81"/></g>
+      <path d="M21 22h22v27a6 6 0 0 1-6 6H27a6 6 0 0 1-6-6V22z" fill="none" stroke="#7A464B" stroke-width="2.4"/>
+      <rect x="20" y="17.6" width="24" height="4.4" rx="2.2" fill="#FFE4E1" stroke="#7A464B" stroke-width="2"/>
+      <rect x="19" y="7.5" width="26" height="10.5" rx="3" fill="#BF7E81" stroke="#7A464B" stroke-width="2.4"/>
+      <path d="M44.6 15.4c1.5 1.5 2.1 3.2 1.9 5.1" fill="none" stroke="#7A464B" stroke-width="1.7" stroke-linecap="round"/>
+      <path d="M47.6 30.4c-3.5-2.8-5.6-4.8-5.6-7a3.1 3.1 0 0 1 5.6-1.8 3.1 3.1 0 0 1 5.6 1.8c0 2.2-2.1 4.2-5.6 7z" fill="#F6CFCB" stroke="#7A464B" stroke-width="2.1" stroke-linejoin="round"/>
+    </svg>
+
+    <!-- first run -->
+    <form id="gateSetup" class="gate-view" hidden>
+      <p class="label">Welcome</p>
+      <h2 class="gate-title">Lock your <em>jars</em></h2>
+      <p class="gate-sub">Set a passcode so your planner isn't open to anyone who picks up this device.</p>
+      <div class="field">
+        <label for="gateEmail">Email <span class="label-optional">optional</span></label>
+        <input type="email" id="gateEmail" placeholder="you@example.com" autocomplete="email">
+      </div>
+      <div class="field">
+        <label for="gateNew">Passcode</label>
+        <input type="password" id="gateNew" required minlength="4" autocomplete="new-password" placeholder="At least 4 characters">
+      </div>
+      <div class="field">
+        <label for="gateConfirm">Again</label>
+        <input type="password" id="gateConfirm" required autocomplete="new-password" placeholder="Repeat it">
+      </div>
+      <p class="gate-warn">There is no server, so no reset email can be sent. You'll get a recovery code instead — keep it somewhere safe.</p>
+      <div class="gate-actions">
+        <button type="button" class="btn-ghost" id="gateSkip">Not now</button>
+        <button type="submit" class="btn-primary">Set passcode</button>
+      </div>
+    </form>
+
+    <!-- recovery code, shown once -->
+    <div id="gateCode" class="gate-view" hidden>
+      <p class="label">Write this down</p>
+      <h2 class="gate-title">Your recovery <em>code</em></h2>
+      <p class="gate-sub">The only way back in if you forget your passcode. It won't be shown again.</p>
+      <p class="recovery-code" id="recoveryCode"></p>
+      <div class="gate-actions">
+        <button type="button" class="btn-ghost" id="copyRecovery">Copy</button>
+        <button type="button" class="btn-primary" id="gateCodeDone">I've saved it</button>
+      </div>
+    </div>
+
+    <!-- returning -->
+    <form id="gateUnlock" class="gate-view" hidden>
+      <p class="label" id="gateWho">Welcome back</p>
+      <h2 class="gate-title">Open your <em>jars</em></h2>
+      <div class="field">
+        <label for="gatePass">Passcode</label>
+        <input type="password" id="gatePass" required autocomplete="current-password" placeholder="Your passcode">
+      </div>
+      <div class="gate-actions">
+        <button type="button" class="btn-ghost" id="gateForgot">Forgot it</button>
+        <button type="submit" class="btn-primary">Unlock</button>
+      </div>
+    </form>
+
+    <!-- recovery -->
+    <form id="gateRecover" class="gate-view" hidden>
+      <p class="label">Recovery</p>
+      <h2 class="gate-title">Use your <em>code</em></h2>
+      <p class="gate-sub">Enter the recovery code you saved. You'll set a new passcode next.</p>
+      <div class="field">
+        <label for="gateRecoveryInput">Recovery code</label>
+        <input type="text" id="gateRecoveryInput" required placeholder="XXXX-XXXX-XXXX" autocomplete="off">
+      </div>
+      <p class="gate-warn" id="gateRecoverWarn">Lost the code too? The only way in is to clear this browser's storage, which erases every jar.</p>
+      <div class="gate-actions">
+        <button type="button" class="btn-ghost" id="gateBackToUnlock">Back</button>
+        <button type="submit" class="btn-primary">Continue</button>
+      </div>
+    </form>
+
+    <p class="gate-error" id="gateError" hidden></p>
+  </div>
+</div>
+
 <nav class="topnav">
   <div class="brandmark">
     <svg class="jar-mark" viewBox="0 0 64 64" aria-hidden="true">
@@ -603,6 +724,7 @@
     <button class="navlink" data-page="calendar">Calendar</button>
   </div>
   <div class="nav-right">
+    <button class="theme-toggle lock-btn" id="lockBtn" title="Lock" aria-label="Lock" hidden>⌂</button>
     <button class="theme-toggle" id="themeToggle" title="Switch theme" aria-label="Switch theme">☾</button>
     <button class="btn-add" id="openAddModal">+ Add a Dream</button>
   </div>
@@ -1915,6 +2037,156 @@
     }
     closeModal(); refreshActivePage();
   });
+
+  /* ---------- Passcode gate ----------
+     A privacy screen, not encryption. The jars still sit readable in this
+     browser's storage; this only stops a passer-by opening the page. With no
+     server there is no reset email, so a recovery code is the way back in. */
+  const AUTH_KEY = 'dreamreel_auth';
+  const UNLOCKED_KEY = 'dreamreel_unlocked';
+
+  const gate = document.getElementById('gate');
+  const gateViews = {
+    setup: document.getElementById('gateSetup'),
+    code: document.getElementById('gateCode'),
+    unlock: document.getElementById('gateUnlock'),
+    recover: document.getElementById('gateRecover')
+  };
+  const gateError = document.getElementById('gateError');
+
+  function loadAuth() {
+    const raw = safeGet(AUTH_KEY);
+    if (raw) { try { return JSON.parse(raw); } catch (e) {} }
+    return null;
+  }
+  function saveAuth(a) { safeSet(AUTH_KEY, JSON.stringify(a)); }
+
+  function randomHex(bytes) {
+    const a = new Uint8Array(bytes);
+    (window.crypto || window.msCrypto).getRandomValues(a);
+    return Array.from(a).map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  // SHA-256 where available; a weaker fallback only if the browser withholds
+  // SubtleCrypto (non-secure origins). Either way the salt is per-install.
+  async function hash(value, salt) {
+    const text = salt + ':' + value;
+    if (window.crypto && crypto.subtle) {
+      const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+      return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+    let h = 0;
+    for (let i = 0; i < text.length; i++) { h = (h << 5) - h + text.charCodeAt(i); h |= 0; }
+    return 'weak' + (h >>> 0).toString(16);
+  }
+
+  function makeRecoveryCode() {
+    const raw = randomHex(6).toUpperCase();
+    return raw.slice(0, 4) + '-' + raw.slice(4, 8) + '-' + raw.slice(8, 12);
+  }
+
+  function showGateView(name) {
+    Object.entries(gateViews).forEach(([k, el]) => { el.hidden = k !== name; });
+    gateError.hidden = true;
+    const focus = gateViews[name] && gateViews[name].querySelector('input');
+    if (focus) setTimeout(() => focus.focus(), 40);
+  }
+  function gateSay(msg) { gateError.textContent = msg; gateError.hidden = false; }
+
+  function openApp() {
+    gate.hidden = true;
+    document.getElementById('lockBtn').hidden = !loadAuth();
+    refreshActivePage();
+  }
+
+  function lockApp() {
+    safeSet(UNLOCKED_KEY, '');
+    const a = loadAuth();
+    document.getElementById('gateWho').textContent = a && a.email ? a.email : 'Welcome back';
+    document.getElementById('gatePass').value = '';
+    gate.hidden = false;
+    showGateView('unlock');
+  }
+
+  // set or replace the passcode, minting a fresh recovery code
+  async function establishPasscode(pass, email) {
+    const salt = randomHex(16);
+    const recovery = makeRecoveryCode();
+    saveAuth({
+      salt,
+      hash: await hash(pass, salt),
+      recovery: await hash(recovery, salt),
+      email: (email || '').trim(),
+      setAt: Date.now()
+    });
+    safeSet(UNLOCKED_KEY, '1');
+    document.getElementById('recoveryCode').textContent = recovery;
+    showGateView('code');
+  }
+
+  document.getElementById('gateSetup').addEventListener('submit', async e => {
+    e.preventDefault();
+    const pass = document.getElementById('gateNew').value;
+    const again = document.getElementById('gateConfirm').value;
+    if (pass.length < 4) { gateSay('Use at least 4 characters.'); return; }
+    if (pass !== again) { gateSay("Those two don't match."); return; }
+    await establishPasscode(pass, document.getElementById('gateEmail').value);
+  });
+
+  document.getElementById('gateSkip').addEventListener('click', () => {
+    safeSet(UNLOCKED_KEY, '1');
+    openApp();
+  });
+
+  document.getElementById('gateCodeDone').addEventListener('click', openApp);
+  document.getElementById('copyRecovery').addEventListener('click', async () => {
+    const code = document.getElementById('recoveryCode').textContent;
+    try { await navigator.clipboard.writeText(code); toast('Recovery code copied'); }
+    catch (e) { gateSay('Copy failed — please write it down instead.'); }
+  });
+
+  document.getElementById('gateUnlock').addEventListener('submit', async e => {
+    e.preventDefault();
+    const a = loadAuth();
+    if (!a) { openApp(); return; }
+    const attempt = await hash(document.getElementById('gatePass').value, a.salt);
+    if (attempt === a.hash) { safeSet(UNLOCKED_KEY, '1'); openApp(); }
+    else { gateSay('That passcode is not right.'); document.getElementById('gatePass').select(); }
+  });
+
+  document.getElementById('gateForgot').addEventListener('click', () => showGateView('recover'));
+  document.getElementById('gateBackToUnlock').addEventListener('click', () => showGateView('unlock'));
+
+  document.getElementById('gateRecover').addEventListener('submit', async e => {
+    e.preventDefault();
+    const a = loadAuth();
+    if (!a) { openApp(); return; }
+    const given = document.getElementById('gateRecoveryInput').value.trim().toUpperCase();
+    const attempt = await hash(given, a.salt);
+    if (attempt !== a.recovery) { gateSay('That code does not match.'); return; }
+    // proven — let them pick a new passcode, which mints a new recovery code
+    document.getElementById('gateRecoveryInput').value = '';
+    document.getElementById('gateEmail').value = a.email || '';
+    document.getElementById('gateNew').value = '';
+    document.getElementById('gateConfirm').value = '';
+    showGateView('setup');
+    gateSay('Code accepted — choose a new passcode.');
+  });
+
+  document.getElementById('lockBtn').addEventListener('click', lockApp);
+
+  (function startGate() {
+    const a = loadAuth();
+    if (!a) {
+      // never set one: offer setup, but let them in without
+      if (safeGet(UNLOCKED_KEY) === '1') { openApp(); return; }
+      gate.hidden = false;
+      showGateView('setup');
+      return;
+    }
+    if (safeGet(UNLOCKED_KEY) === '1') { openApp(); return; }
+    lockApp();
+  })();
 
   renderHome();
 </script>
