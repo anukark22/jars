@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#F9F1E8" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#241B1D" media="(prefers-color-scheme: dark)">
 <!-- Jar logo, inline so the app stays a single file with no extra requests -->
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23F9F1E8'/%3E%3Crect x='10' y='3.5' width='12' height='3.8' rx='1.5' fill='%237A464B'/%3E%3Cpath d='M12 7.3h8v2.4c0 .6.3 1.2.8 1.6 1.4 1 2.2 2.6 2.2 4.3V23a5 5 0 0 1-5 5h-4a5 5 0 0 1-5-5v-7.4c0-1.7.8-3.3 2.2-4.3.5-.4.8-1 .8-1.6z' fill='%23BF7E81'/%3E%3Cpath d='M9 19.5h14V23a5 5 0 0 1-5 5h-4a5 5 0 0 1-5-5z' fill='%237A464B' opacity='.45'/%3E%3Ccircle cx='16' cy='23.5' r='1.6' fill='%23FFE4E1' opacity='.85'/%3E%3C/svg%3E">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cstyle%3E.bg%7Bfill:%23F9F1E8%7D.g%7Bfill:%23FFE4E1%7D.f%7Bfill:%23BF7E81%7D.d%7Bfill:%23BF7E81%7D.t%7Bfill:%23F6CFCB%7D.l%7Bstroke:%237A464B;fill:none%7D@media(prefers-color-scheme:dark)%7B.bg%7Bfill:%23241B1D%7D.g%7Bfill:%234A3639%7D.f%7Bfill:%23D4979A%7D.d%7Bfill:%239A5D61%7D.t%7Bfill:%23C4868A%7D.l%7Bstroke:%23F3E8E2%7D%7D%3C/style%3E%3CclipPath id='b'%3E%3Cpath d='M21 22h22v27a6 6 0 0 1-6 6H27a6 6 0 0 1-6-6V22z'/%3E%3C/clipPath%3E%3Crect class='bg' width='64' height='64' rx='14'/%3E%3Cpath class='g' d='M21 22h22v27a6 6 0 0 1-6 6H27a6 6 0 0 1-6-6V22z'/%3E%3Cg clip-path='url(%23b)'%3E%3Crect class='f' x='19' y='37' width='26' height='20'/%3E%3C/g%3E%3Cpath class='l' d='M21 22h22v27a6 6 0 0 1-6 6H27a6 6 0 0 1-6-6V22z' stroke-width='2.4'/%3E%3Crect class='g' x='20' y='17.6' width='24' height='4.4' rx='2.2'/%3E%3Crect class='l' x='20' y='17.6' width='24' height='4.4' rx='2.2' stroke-width='2'/%3E%3Crect class='d' x='19' y='7.5' width='26' height='10.5' rx='3'/%3E%3Crect class='l' x='19' y='7.5' width='26' height='10.5' rx='3' stroke-width='2.4'/%3E%3Cpath class='l' d='M24.5 10.8v4M30.5 10.8v4M36.5 10.8v4' stroke-width='1.4' stroke-linecap='round' opacity='.45'/%3E%3Cpath class='l' d='M44.6 15.4c1.5 1.5 2.1 3.2 1.9 5.1' stroke-width='1.7' stroke-linecap='round'/%3E%3Cpath class='t' d='M47.6 30.4c-3.5-2.8-5.6-4.8-5.6-7a3.1 3.1 0 0 1 5.6-1.8 3.1 3.1 0 0 1 5.6 1.8c0 2.2-2.1 4.2-5.6 7z'/%3E%3Cpath class='l' d='M47.6 30.4c-3.5-2.8-5.6-4.8-5.6-7a3.1 3.1 0 0 1 5.6-1.8 3.1 3.1 0 0 1 5.6 1.8c0 2.2-2.1 4.2-5.6 7z' stroke-width='2.1' stroke-linejoin='round'/%3E%3C/svg%3E">
 <script>
   // set the theme before first paint so there's no flash
   (function () {
@@ -160,7 +160,13 @@
     padding: 24px 28px 16px; display: flex; align-items: center; justify-content: space-between;
     gap: 18px; flex-wrap: wrap; border-bottom: 1px solid var(--line-soft);
   }
-  .brandmark { font-family: var(--font-display); font-size: 1.5rem; font-weight: 400; color: var(--plum); white-space: nowrap; letter-spacing: 0.01em; }
+  .brandmark { font-family: var(--font-display); font-size: 1.5rem; font-weight: 400; color: var(--plum); white-space: nowrap; letter-spacing: 0.01em; display: flex; align-items: center; gap: 9px; }
+  .jar-mark { width: 30px; height: 30px; flex-shrink: 0; display: block; }
+  .jar-mark .jm-glass { fill: var(--blush); }
+  .jar-mark .jm-fill  { fill: var(--rose); }
+  .jar-mark .jm-lid   { fill: var(--rose); }
+  .jar-mark .jm-tag   { fill: var(--blush-deep); }
+  .jar-mark .jm-line  { stroke: var(--plum); }
   .brandmark em { font-family: var(--font-fancy); font-style: italic; font-weight: 500; color: var(--rose-deep); }
   .navlinks { display: flex; gap: 30px; flex-wrap: wrap; }
   .navlink {
@@ -542,7 +548,28 @@
 <div id="petalFall"></div>
 
 <nav class="topnav">
-  <div class="brandmark"><em>jars</em></div>
+  <div class="brandmark">
+    <svg class="jar-mark" viewBox="0 0 64 64" aria-hidden="true">
+      <defs>
+        <clipPath id="jarBody"><path d="M21 22h22v27a6 6 0 0 1-6 6H27a6 6 0 0 1-6-6V22z"/></clipPath>
+      </defs>
+      <!-- colours come from CSS so the mark follows the theme -->
+      <path class="jm-glass" d="M21 22h22v27a6 6 0 0 1-6 6H27a6 6 0 0 1-6-6V22z"/>
+      <!-- what's saved so far -->
+      <g clip-path="url(#jarBody)"><rect class="jm-fill" x="19" y="37" width="26" height="20"/></g>
+      <path class="jm-line" d="M21 22h22v27a6 6 0 0 1-6 6H27a6 6 0 0 1-6-6V22z" fill="none" stroke-width="2.4"/>
+      <!-- neck ring -->
+      <rect class="jm-glass jm-line" x="20" y="17.6" width="24" height="4.4" rx="2.2" stroke-width="2"/>
+      <!-- screw-band lid -->
+      <rect class="jm-lid jm-line" x="19" y="7.5" width="26" height="10.5" rx="3" stroke-width="2.4"/>
+      <path class="jm-line" d="M24.5 10.8v4M30.5 10.8v4M36.5 10.8v4" stroke-width="1.4" stroke-linecap="round" opacity=".45" fill="none"/>
+      <!-- string -->
+      <path class="jm-line" d="M44.6 15.4c1.5 1.5 2.1 3.2 1.9 5.1" fill="none" stroke-width="1.7" stroke-linecap="round"/>
+      <!-- heart tag -->
+      <path class="jm-tag jm-line" d="M47.6 30.4c-3.5-2.8-5.6-4.8-5.6-7a3.1 3.1 0 0 1 5.6-1.8 3.1 3.1 0 0 1 5.6 1.8c0 2.2-2.1 4.2-5.6 7z" stroke-width="2.1" stroke-linejoin="round"/>
+    </svg>
+    <em>jars</em>
+  </div>
   <div class="navlinks">
     <button class="navlink active" data-page="home">Home</button>
     <button class="navlink" data-page="wallet">Wallet</button>
