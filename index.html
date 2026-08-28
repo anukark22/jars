@@ -440,6 +440,26 @@
   .event-why { font-family: var(--font-display); font-style: italic; color: var(--plum-dim); margin: 0 0 6px; font-size: 1.08rem; }
   .event-meta { font-size: 0.8rem; color: var(--plum-faint); }
   .event-pace { margin-top: 5px; font-size: 0.98rem; }
+  .category-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 18px; }
+  .category-card {
+    background: var(--paper); border: 1px solid var(--line-soft); border-radius: 4px;
+    padding: 22px 20px; cursor: pointer; text-align: left;
+    box-shadow: 0 4px 16px var(--shadow-tint);
+    transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+    animation: riseIn 0.5s ease both;
+  }
+  .category-card:hover { transform: translateY(-3px); border-color: var(--rose); box-shadow: 0 12px 28px var(--shadow-lift); }
+  .category-card h3 { font-family: var(--font-display); font-size: 1.25rem; font-weight: 500; margin: 0 0 3px; }
+  .category-card .cat-card-count { font-family: var(--font-label); text-transform: uppercase; letter-spacing: 0.13em; font-size: 0.52rem; color: var(--plum-faint); }
+  .category-card .progress-track { margin-top: 14px; }
+  .cat-card-figs { display: block; margin-top: 8px; font-size: 0.78rem; color: var(--plum-dim); }
+
+  .cat-filter {
+    display: flex; align-items: center; justify-content: center; gap: 12px;
+    margin-bottom: 26px; flex-wrap: wrap;
+  }
+  .cat-filter-name { font-family: var(--font-display); font-size: 1.15rem; font-style: italic; color: var(--rose-deep); }
+
   .cat-block { margin-bottom: 44px; }
   .cat-head {
     display: flex; align-items: flex-end; justify-content: space-between; gap: 20px;
@@ -553,6 +573,12 @@
   .field-row .field { flex: 1; }
   .field label { display: block; font-family: var(--font-label); text-transform: uppercase; letter-spacing: 0.17em; font-size: 0.53rem; font-weight: 500; color: var(--rose-deep); margin-bottom: 8px; }
   .label-optional { letter-spacing: 0.04em; text-transform: none; font-style: italic; color: var(--plum-faint); }
+  .field select {
+    width: 100%; background: var(--cream); border: 1px solid var(--line); color: var(--plum);
+    padding: 11px 13px; font-size: 0.87rem; font-family: var(--font-body); border-radius: 2px;
+  }
+  .field select:focus { outline: none; border-color: var(--rose); }
+  #dreamCategoryNew { margin-top: 8px; }
   .field input[type="text"], .field input[type="number"], .field input[type="date"], .field input[type="file"], .field textarea {
     width: 100%; background: var(--cream); border: 1px solid var(--line); color: var(--plum);
     padding: 11px 13px; font-size: 0.87rem; font-family: var(--font-body); border-radius: 2px;
@@ -648,6 +674,9 @@
 
     <div class="rule"><span>My Collections</span></div>
     <div class="collections" id="collections"></div>
+
+    <div class="rule"><span>My Categories</span></div>
+    <div class="category-grid" id="categoryGrid"></div>
 
     <div class="rule"><span>Current Focus</span></div>
     <div id="focusCard"></div>
@@ -799,10 +828,9 @@
 
       <div class="field">
         <label for="dreamCategory">Category <span class="label-optional">optional</span></label>
-        <input type="text" id="dreamCategory" list="categoryList" maxlength="40"
-               placeholder="Wardrobe, Trips, Gifts…" autocomplete="off">
-        <datalist id="categoryList"></datalist>
-        <div class="field-hint">Type a new one, or pick one you've used. Jars sharing a category share a progress bar.</div>
+        <select id="dreamCategory"></select>
+        <input type="text" id="dreamCategoryNew" maxlength="40" placeholder="Name your new category" autocomplete="off" hidden>
+        <div class="field-hint">Jars sharing a category share a progress bar.</div>
       </div>
 
       <div class="field">
@@ -1266,6 +1294,7 @@
     document.getElementById('daysCloser').textContent = `${days} days closer to your dreams`;
 
     renderCollections();
+    renderCategoryCards();
 
     const focusEl = document.getElementById('focusCard');
     if (open.length) {
@@ -1670,6 +1699,32 @@
     return { target, saved, pct: target > 0 ? Math.min(100, Math.round(saved / target * 100)) : 0 };
   }
 
+  // set from a Home category card; null shows every category
+  let activeCategory = null;
+
+  function renderCategoryCards() {
+    const el = document.getElementById('categoryGrid');
+    const cats = allCategories();
+    if (!goals.length) {
+      el.innerHTML = `<p class="empty-hint">Categories appear once you've added a jar.</p>`;
+      return;
+    }
+    el.innerHTML = cats.map((cat, i) => {
+      const list = goals.filter(g => categoryOf(g) === cat);
+      const t = categoryTotals(list);
+      return `<button type="button" class="category-card" data-cat="${escapeHtml(cat)}" style="animation-delay:${i * 0.05}s">
+        <h3>${escapeHtml(cat)}</h3>
+        <span class="cat-card-count">${list.length} jar${list.length === 1 ? '' : 's'} · ${t.pct}%</span>
+        <div class="progress-track"><div class="progress-fill ${t.saved >= t.target && t.target > 0 ? 'complete' : ''}" style="width:${t.pct}%"></div></div>
+        <span class="cat-card-figs">${formatMoney(t.saved)} of ${formatMoney(t.target)}</span>
+      </button>`;
+    }).join('');
+    el.querySelectorAll('.category-card').forEach(b => b.addEventListener('click', () => {
+      activeCategory = b.dataset.cat;
+      showPage('events');
+    }));
+  }
+
   function renderEvents() {
     const el = document.getElementById('eventsList');
     if (!goals.length) {
@@ -1677,8 +1732,19 @@
       attachCardListeners(el); return;
     }
 
+    let shown = allCategories();
     let html = '';
-    allCategories().forEach(cat => {
+    if (activeCategory && shown.includes(activeCategory)) {
+      shown = [activeCategory];
+      html += `<div class="cat-filter">
+        <span class="cat-filter-name">Showing ${escapeHtml(activeCategory)}</span>
+        <button type="button" class="btn-ghost" id="clearCatFilter">Show all</button>
+      </div>`;
+    } else {
+      activeCategory = null; // the category may have been renamed or emptied
+    }
+
+    shown.forEach(cat => {
       const list = goals.filter(g => categoryOf(g) === cat);
       // dated first, soonest at the top; undated trail behind
       list.sort((a, b) => {
@@ -1705,6 +1771,8 @@
     });
     el.innerHTML = html;
     attachCardListeners(el);
+    const clear = document.getElementById('clearCatFilter');
+    if (clear) clear.addEventListener('click', () => { activeCategory = null; renderEvents(); });
   }
 
   function eventRow(g, day, wd) {
@@ -1889,15 +1957,39 @@
     refreshCategorySuggestions();
   }
 
-  // offer the categories already in use, so they can be reused rather than retyped
-  function refreshCategorySuggestions() {
+  // every category already in use, so the next jar picks one instead of retyping it
+  function usedCategories() {
     const used = [];
     goals.forEach(g => {
       const c = (g.category || '').trim();
       if (c && !used.includes(c)) used.push(c);
     });
-    document.getElementById('categoryList').innerHTML =
-      used.sort((a, b) => a.localeCompare(b)).map(c => `<option value="${escapeHtml(c)}"></option>`).join('');
+    return used.sort((a, b) => a.localeCompare(b));
+  }
+
+  function refreshCategorySuggestions(selected) {
+    const sel = document.getElementById('dreamCategory');
+    const list = usedCategories();
+    if (selected && !list.includes(selected)) list.push(selected); // keep an edited jar's own one
+    sel.innerHTML =
+      `<option value="">No category</option>` +
+      list.map(c => `<option value="${escapeHtml(c)}"${c === selected ? ' selected' : ''}>${escapeHtml(c)}</option>`).join('') +
+      `<option value="__new">＋ New category…</option>`;
+    const nu = document.getElementById('dreamCategoryNew');
+    nu.hidden = true; nu.value = '';
+  }
+
+  document.getElementById('dreamCategory').addEventListener('change', function () {
+    const nu = document.getElementById('dreamCategoryNew');
+    if (this.value === '__new') { nu.hidden = false; nu.focus(); }
+    else { nu.hidden = true; nu.value = ''; }
+  });
+
+  // what the form is actually asking for, whichever control was used
+  function chosenCategory() {
+    const sel = document.getElementById('dreamCategory');
+    if (sel.value === '__new') return document.getElementById('dreamCategoryNew').value.trim();
+    return sel.value;
   }
   function openModalForAdd() {
     editingId = null; resetForm();
@@ -1924,7 +2016,7 @@
     document.getElementById('dreamEventDate').value = g.eventDate || '';
     document.getElementById('dreamEventLocation').value = g.eventLocation || '';
     document.getElementById('dreamTags').value = (g.tags || []).join(', ');
-    document.getElementById('dreamCategory').value = g.category || '';
+    refreshCategorySuggestions(g.category || '');
     document.getElementById('dreamTarget').value = g.target;
     document.getElementById('dreamSaved').value = g.saved;
     document.getElementById('dreamWhy').value = g.why || '';
@@ -1952,7 +2044,7 @@
     const saved = parseFloat(document.getElementById('dreamSaved').value) || 0;
     const notes = document.getElementById('dreamNotes').value;
     const why = document.getElementById('dreamWhy').value.trim();
-    const category = document.getElementById('dreamCategory').value.trim();
+    const category = chosenCategory();
     const icon = document.getElementById('dreamIcon').value.trim();
     const eventDate = document.getElementById('dreamEventDate').value;
     const eventLocation = selectedType === 'celebration' ? document.getElementById('dreamEventLocation').value.trim() : '';
