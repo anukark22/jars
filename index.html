@@ -440,6 +440,9 @@
   .event-why { font-family: var(--font-display); font-style: italic; color: var(--plum-dim); margin: 0 0 6px; font-size: 1.08rem; }
   .event-meta { font-size: 0.8rem; color: var(--plum-faint); }
   .event-pace { margin-top: 5px; font-size: 0.98rem; }
+  .event-bar { display: flex; align-items: center; gap: 10px; margin-top: 9px; max-width: 340px; }
+  .event-bar .progress-track { flex: 1; min-width: 0; }
+  .event-pct { font-family: var(--font-label); font-size: 0.55rem; letter-spacing: 0.12em; color: var(--plum-faint); white-space: nowrap; }
   .event-side { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
   .event-actions { display: flex; gap: 6px; }
 
@@ -1646,6 +1649,10 @@
         <h3 class="event-name">${hasIcon(g) ? escapeHtml(iconFor(g)) + ' ' : ''}${escapeHtml(g.name)}</h3>
         ${g.why ? `<p class="event-why">"${escapeHtml(g.why)}"</p>` : ''}
         <p class="event-meta">${g.eventLocation ? escapeHtml(g.eventLocation) + ' · ' : ''}${formatMoney(g.saved)} of ${formatMoney(g.target)} saved</p>
+        <div class="event-bar">
+          <div class="progress-track"><div class="progress-fill ${g.saved >= g.target && g.target > 0 ? 'complete' : ''}" style="width:${pctFor(g)}%"></div></div>
+          <span class="event-pct">${pctFor(g)}%</span>
+        </div>
         ${paceNote(g) ? `<p class="pace-note event-pace">${escapeHtml(paceNote(g))}</p>` : ''}
       </div>
       <div class="event-side">
