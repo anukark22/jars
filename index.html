@@ -440,6 +440,25 @@
   .event-why { font-family: var(--font-display); font-style: italic; color: var(--plum-dim); margin: 0 0 6px; font-size: 1.08rem; }
   .event-meta { font-size: 0.8rem; color: var(--plum-faint); }
   .event-pace { margin-top: 5px; font-size: 0.98rem; }
+  .cat-block { margin-bottom: 44px; }
+  .cat-head {
+    display: flex; align-items: flex-end; justify-content: space-between; gap: 20px;
+    flex-wrap: wrap; padding-bottom: 12px; margin-bottom: 16px;
+    border-bottom: 1px solid var(--line);
+  }
+  .cat-title { display: flex; align-items: baseline; gap: 12px; }
+  .cat-name { font-family: var(--font-display); font-size: 1.6rem; font-weight: 500; margin: 0; }
+  .cat-count {
+    font-family: var(--font-label); text-transform: uppercase; letter-spacing: 0.14em;
+    font-size: 0.53rem; color: var(--plum-faint); white-space: nowrap;
+  }
+  .cat-progress { flex: 1 1 220px; min-width: 180px; max-width: 320px; }
+  .cat-figs {
+    display: block; margin-top: 7px; text-align: right;
+    font-family: var(--font-label); font-size: 0.55rem; letter-spacing: 0.11em;
+    text-transform: uppercase; color: var(--plum-faint);
+  }
+
   .event-bar { display: flex; align-items: center; gap: 10px; margin-top: 9px; max-width: 340px; }
   .event-bar .progress-track { flex: 1; min-width: 0; }
   .event-pct { font-family: var(--font-label); font-size: 0.55rem; letter-spacing: 0.12em; color: var(--plum-faint); white-space: nowrap; }
@@ -776,6 +795,14 @@
       <div class="field">
         <label for="dreamName">What is it?</label>
         <input type="text" id="dreamName" placeholder="Sony A7 IV Camera" required>
+      </div>
+
+      <div class="field">
+        <label for="dreamCategory">Category <span class="label-optional">optional</span></label>
+        <input type="text" id="dreamCategory" list="categoryList" maxlength="40"
+               placeholder="Wardrobe, Trips, Gifts…" autocomplete="off">
+        <datalist id="categoryList"></datalist>
+        <div class="field-hint">Type a new one, or pick one you've used. Jars sharing a category share a progress bar.</div>
       </div>
 
       <div class="field">
@@ -1620,24 +1647,62 @@
   }
 
   /* ---------- Events ---------- */
+  const NO_CATEGORY = 'Everything else';
+  function categoryOf(g) { return (g.category || '').trim() || NO_CATEGORY; }
+
+  // every category in use, named ones first and the catch-all last
+  function allCategories() {
+    const seen = [];
+    goals.forEach(g => {
+      const c = categoryOf(g);
+      if (!seen.includes(c)) seen.push(c);
+    });
+    return seen.sort((a, b) => {
+      if (a === NO_CATEGORY) return 1;
+      if (b === NO_CATEGORY) return -1;
+      return a.localeCompare(b);
+    });
+  }
+
+  function categoryTotals(list) {
+    const target = list.reduce((s, g) => s + (Number(g.target) || 0), 0);
+    const saved = list.reduce((s, g) => s + (Number(g.saved) || 0), 0);
+    return { target, saved, pct: target > 0 ? Math.min(100, Math.round(saved / target * 100)) : 0 };
+  }
+
   function renderEvents() {
     const el = document.getElementById('eventsList');
-    const dated = goals.filter(g => g.eventDate).sort((a, b) => a.eventDate.localeCompare(b.eventDate));
-    const undated = goals.filter(g => !g.eventDate);
-    if (!dated.length && !undated.length) {
-      el.innerHTML = emptyStateHtml('No events yet', 'Give a dream a date and it will show up here.');
+    if (!goals.length) {
+      el.innerHTML = emptyStateHtml('Nothing here yet', 'Add a jar and it will appear under its category.');
       attachCardListeners(el); return;
     }
-    let html = '', lastMonth = '';
-    dated.forEach(g => {
-      const m = monthLabel(g.eventDate);
-      if (m !== lastMonth) { html += `<p class="month-head">${escapeHtml(m)}</p>`; lastMonth = m; }
-      html += eventRow(g, dayNum(g.eventDate), weekdayShort(g.eventDate));
+
+    let html = '';
+    allCategories().forEach(cat => {
+      const list = goals.filter(g => categoryOf(g) === cat);
+      // dated first, soonest at the top; undated trail behind
+      list.sort((a, b) => {
+        if (a.eventDate && b.eventDate) return a.eventDate.localeCompare(b.eventDate);
+        if (a.eventDate) return -1;
+        if (b.eventDate) return 1;
+        return b.createdAt - a.createdAt;
+      });
+      const t = categoryTotals(list);
+      html += `
+        <div class="cat-block">
+          <div class="cat-head">
+            <div class="cat-title">
+              <h2 class="cat-name">${escapeHtml(cat)}</h2>
+              <span class="cat-count">${list.length} jar${list.length === 1 ? '' : 's'}</span>
+            </div>
+            <div class="cat-progress">
+              <div class="progress-track"><div class="progress-fill ${t.saved >= t.target && t.target > 0 ? 'complete' : ''}" style="width:${t.pct}%"></div></div>
+              <span class="cat-figs">${formatMoney(t.saved)} of ${formatMoney(t.target)} · ${t.pct}%</span>
+            </div>
+          </div>
+          ${list.map(g => eventRow(g, g.eventDate ? dayNum(g.eventDate) : '·', g.eventDate ? weekdayShort(g.eventDate) : '')).join('')}
+        </div>`;
     });
-    if (undated.length) {
-      html += `<p class="month-head">No date yet</p>`;
-      undated.forEach(g => { html += eventRow(g, '·', ''); });
-    }
     el.innerHTML = html;
     attachCardListeners(el);
   }
@@ -1648,7 +1713,7 @@
       <div>
         <h3 class="event-name">${hasIcon(g) ? escapeHtml(iconFor(g)) + ' ' : ''}${escapeHtml(g.name)}</h3>
         ${g.why ? `<p class="event-why">"${escapeHtml(g.why)}"</p>` : ''}
-        <p class="event-meta">${g.eventLocation ? escapeHtml(g.eventLocation) + ' · ' : ''}${formatMoney(g.saved)} of ${formatMoney(g.target)} saved</p>
+        <p class="event-meta">${g.eventDate ? escapeHtml(monthLabel(g.eventDate)) + ' · ' : ''}${g.eventLocation ? escapeHtml(g.eventLocation) + ' · ' : ''}${formatMoney(g.saved)} of ${formatMoney(g.target)} saved</p>
         <div class="event-bar">
           <div class="progress-track"><div class="progress-fill ${g.saved >= g.target && g.target > 0 ? 'complete' : ''}" style="width:${pctFor(g)}%"></div></div>
           <span class="event-pct">${pctFor(g)}%</span>
@@ -1821,6 +1886,18 @@
     dreamForm.reset();
     selectedType = 'item'; selectedPriority = 'medium';
     setPhotoPreview(''); applyTypeUI('item'); applyPriorityUI('medium');
+    refreshCategorySuggestions();
+  }
+
+  // offer the categories already in use, so they can be reused rather than retyped
+  function refreshCategorySuggestions() {
+    const used = [];
+    goals.forEach(g => {
+      const c = (g.category || '').trim();
+      if (c && !used.includes(c)) used.push(c);
+    });
+    document.getElementById('categoryList').innerHTML =
+      used.sort((a, b) => a.localeCompare(b)).map(c => `<option value="${escapeHtml(c)}"></option>`).join('');
   }
   function openModalForAdd() {
     editingId = null; resetForm();
@@ -1847,6 +1924,7 @@
     document.getElementById('dreamEventDate').value = g.eventDate || '';
     document.getElementById('dreamEventLocation').value = g.eventLocation || '';
     document.getElementById('dreamTags').value = (g.tags || []).join(', ');
+    document.getElementById('dreamCategory').value = g.category || '';
     document.getElementById('dreamTarget').value = g.target;
     document.getElementById('dreamSaved').value = g.saved;
     document.getElementById('dreamWhy').value = g.why || '';
@@ -1874,6 +1952,7 @@
     const saved = parseFloat(document.getElementById('dreamSaved').value) || 0;
     const notes = document.getElementById('dreamNotes').value;
     const why = document.getElementById('dreamWhy').value.trim();
+    const category = document.getElementById('dreamCategory').value.trim();
     const icon = document.getElementById('dreamIcon').value.trim();
     const eventDate = document.getElementById('dreamEventDate').value;
     const eventLocation = selectedType === 'celebration' ? document.getElementById('dreamEventLocation').value.trim() : '';
@@ -1895,7 +1974,7 @@
         }
         const wasComplete = g.saved >= g.target;
         // keep id, createdAt and checklist; replace what the form owns
-        Object.assign(g, { name, type: selectedType, priority: selectedPriority, icon, target, saved, notes, why, tags, eventDate, eventLocation, photo: pendingPhoto });
+        Object.assign(g, { name, type: selectedType, priority: selectedPriority, icon, category, target, saved, notes, why, tags, eventDate, eventLocation, photo: pendingPhoto });
         if (delta !== 0) {
           fundingLog.push({ amount: delta, date: todayStr(), goalId: g.id, goalName: g.name });
           saveFundingLog();
@@ -1907,7 +1986,7 @@
       }
     } else {
       goals.push({ id: rid(), name, type: selectedType, priority: selectedPriority, icon,
-        target, saved, notes, why, tags, eventDate, eventLocation, photo: pendingPhoto, checklist: [], createdAt: Date.now() });
+        category, target, saved, notes, why, tags, eventDate, eventLocation, photo: pendingPhoto, checklist: [], createdAt: Date.now() });
     }
     saveGoals(goals);
 
