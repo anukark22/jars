@@ -36,8 +36,9 @@
 </main>
 
 <script type="module">
-import { JAR_SVG, api, say, clearSay, submitting, offerImport, goNext } from '/auth.js';
+import { JAR_SVG, api, say, clearSay, submitting, addPasswordReveals, offerImport, goNext } from '/auth.js';
 document.getElementById('mark').innerHTML = JAR_SVG;
+addPasswordReveals();
 
 const form = document.getElementById('form');
 const msg = document.getElementById('msg');

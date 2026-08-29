@@ -118,8 +118,9 @@
 </main>
 
 <script type="module">
-import { JAR_SVG, api, say, clearSay, submitting, forgetLocalData } from '/auth.js';
+import { JAR_SVG, api, say, clearSay, submitting, addPasswordReveals, forgetLocalData } from '/auth.js';
 document.getElementById('mark').innerHTML = JAR_SVG;
+addPasswordReveals();
 
 const me = await api('/api/auth/me');
 if (!me.authenticated) location.href = '/login?next=' + encodeURIComponent('/account');

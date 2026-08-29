@@ -67,6 +67,21 @@ h1 em { font-family: var(--font-fancy); font-style: italic; color: var(--rose-de
   width: 100%; background: var(--cream); border: 1px solid var(--line); color: var(--plum);
   padding: 11px 13px; font-size: .9rem; font-family: var(--font-body); border-radius: 2px;
 }
+/* The button is positioned against this wrapper rather than the whole field,
+   which would include the label above and push it out of the box. */
+.input-wrap { position: relative; display: block; }
+.field.has-reveal input { padding-right: 62px; }
+.reveal {
+  position: absolute; right: 1px; top: 1px; bottom: 1px;
+  display: flex; align-items: center;
+  padding: 0 12px; background: none; border: 0; cursor: pointer;
+  font-family: var(--font-label); text-transform: uppercase; letter-spacing: .13em;
+  font-size: .52rem; font-weight: 500; color: var(--rose-deep);
+}
+.reveal:hover:not(:disabled) { color: var(--plum); }
+.reveal:focus-visible { outline: 1px solid var(--rose); outline-offset: -2px; }
+.reveal:disabled { opacity: .5; cursor: default; }
+
 .field input::placeholder { color: var(--plum-faint); }
 .field input:focus { outline: none; border-color: var(--rose); background: var(--paper); }
 .field input:disabled { opacity: .6; }

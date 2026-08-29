@@ -34,6 +34,44 @@ export async function api(path, body, method) {
   return data;
 }
 
+/* Puts a show/hide button on every password box, because a password you can't
+   read is a password you can't check against the one above it. Revealing is
+   per-field: showing one doesn't give away the others. */
+export function addPasswordReveals(root) {
+  (root || document).querySelectorAll('input[type="password"]').forEach(input => {
+    const field = input.closest('.field');
+    if (!field || field.classList.contains('has-reveal')) return;
+    field.classList.add('has-reveal');
+
+    const btn = document.createElement('button');
+    btn.type = 'button';                     // never submits the form
+    btn.className = 'reveal';
+    btn.textContent = 'Show';
+    btn.setAttribute('aria-controls', input.id || '');
+    btn.setAttribute('aria-pressed', 'false');
+    btn.setAttribute('aria-label', 'Show password');
+
+    btn.addEventListener('click', () => {
+      const showing = input.type === 'password';
+      input.type = showing ? 'text' : 'password';
+      btn.textContent = showing ? 'Hide' : 'Show';
+      btn.setAttribute('aria-pressed', String(showing));
+      btn.setAttribute('aria-label', showing ? 'Hide password' : 'Show password');
+      // Put the caret back where it was, rather than at the start.
+      const at = input.value.length;
+      input.focus();
+      try { input.setSelectionRange(at, at); } catch (e) { /* not always allowed */ }
+    });
+
+    // The input gets its own wrapper so the button can sit inside its border.
+    const wrap = document.createElement('div');
+    wrap.className = 'input-wrap';
+    input.parentNode.insertBefore(wrap, input);
+    wrap.appendChild(input);
+    wrap.appendChild(btn);
+  });
+}
+
 export function say(el, text, kind) {
   el.textContent = text;
   el.className = 'msg ' + (kind || 'error');

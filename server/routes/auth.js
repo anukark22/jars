@@ -20,8 +20,10 @@ const loginLimit  = rateLimit({ name: 'login',  windowMs: 15 * 60000, max: 10, k
 const signupLimit = rateLimit({ name: 'signup', windowMs: 60 * 60000, max: 5,  key: byIp });
 const forgotLimit = rateLimit({ name: 'forgot', windowMs: 15 * 60000, max: 5,  key: byIp });
 const resetLimit  = rateLimit({ name: 'reset',  windowMs: 15 * 60000, max: 10, key: byIp });
-// Tighter than the rest: this one is guessed at, not forgotten.
-const recoverLimit = rateLimit({ name: 'recover', windowMs: 60 * 60000, max: 5, key: byIp });
+/* A recovery code is 99 bits, so guessing it is hopeless however many tries are
+   allowed; the limit is only here to stop someone hammering the endpoint. Ten
+   leaves room to mistype a code copied off paper. */
+const recoverLimit = rateLimit({ name: 'recover', windowMs: 60 * 60000, max: 10, key: byIp });
 
 const publicUser = u => ({ id: u.id, email: u.email });
 
