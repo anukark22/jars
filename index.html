@@ -317,35 +317,6 @@
   .icon-btn.delete:hover { background: var(--danger); border-color: var(--danger); color: var(--cream); }
 
 
-  /* ---------- Login gate ---------- */
-  #gate {
-    position: fixed; inset: 0; z-index: 300; display: flex;
-    align-items: center; justify-content: center; padding: 24px; overflow-y: auto;
-    background: var(--cream);
-  }
-  #gate[hidden] { display: none; }
-  .gate-card {
-    background: var(--paper); border: 1px solid var(--line); border-radius: 4px;
-    width: 100%; max-width: 410px; padding: 34px; text-align: center;
-    box-shadow: 0 24px 60px var(--shadow-lift); animation: modalPop 0.35s ease;
-  }
-  .gate-jar { width: 60px; height: 60px; display: block; margin: 0 auto 14px; }
-  .gate-title { font-family: var(--font-display); font-size: 1.75rem; font-weight: 500; margin: 6px 0 10px; color: var(--plum); }
-  .gate-title em { font-family: var(--font-fancy); font-style: italic; color: var(--rose-deep); }
-  .gate-sub { font-family: var(--font-display); font-style: italic; color: var(--plum-dim); margin: 0 0 20px; font-size: 1.02rem; line-height: 1.5; }
-  .gate-sub code { font-family: 'Montserrat', monospace; font-style: normal; font-size: 0.8rem; color: var(--rose-deep); }
-  .gate-card .field { text-align: left; }
-  .gate-actions { display: flex; gap: 10px; justify-content: center; margin-top: 4px; }
-  .gate-actions button { flex: 1; }
-  .gate-error { margin: 16px 0 0; font-size: 0.85rem; color: var(--danger); font-family: var(--font-display); font-style: italic; }
-  .gate-foot { margin: 18px 0 0; font-size: 0.76rem; color: var(--plum-faint); line-height: 1.5; }
-  .gate-note { margin: 16px 0 0; font-size: 0.85rem; color: var(--rose-deep); font-family: var(--font-display); font-style: italic; }
-  .snippet {
-    text-align: left; font-family: 'Montserrat', monospace; font-size: 0.68rem; line-height: 1.7;
-    background: var(--cream); border: 1px dashed var(--line); border-radius: 3px;
-    padding: 14px; margin: 0 0 18px; overflow-x: auto; white-space: pre; color: var(--plum);
-  }
-
   /* ---------- Toast ---------- */
   .toast {
     position: fixed; left: 50%; bottom: 30px; transform: translateX(-50%);
@@ -611,8 +582,7 @@
   }
   .field select:focus { outline: none; border-color: var(--rose); }
   #dreamCategoryNew { margin-top: 8px; }
-  /* every text-ish input, so a new type can't fall back to browser defaults */
-  .field input:not([type="checkbox"]):not([type="radio"]), .field textarea {
+  .field input[type="text"], .field input[type="number"], .field input[type="date"], .field input[type="file"], .field textarea {
     width: 100%; background: var(--cream); border: 1px solid var(--line); color: var(--plum);
     padding: 11px 13px; font-size: 0.87rem; font-family: var(--font-body); border-radius: 2px;
   }
@@ -652,78 +622,6 @@
 
 <div id="petalFall"></div>
 
-<div id="gate" hidden>
-  <div class="gate-card">
-    <svg class="gate-jar" viewBox="10 5 51 51" aria-hidden="true">
-      <clipPath id="gateJar"><path d="M21 22h22v27a6 6 0 0 1-6 6H27a6 6 0 0 1-6-6V22z"/></clipPath>
-      <path d="M21 22h22v27a6 6 0 0 1-6 6H27a6 6 0 0 1-6-6V22z" fill="#FFE4E1"/>
-      <g clip-path="url(#gateJar)"><rect x="19" y="37" width="26" height="20" fill="#BF7E81"/></g>
-      <path d="M21 22h22v27a6 6 0 0 1-6 6H27a6 6 0 0 1-6-6V22z" fill="none" stroke="#7A464B" stroke-width="2.4"/>
-      <rect x="20" y="17.6" width="24" height="4.4" rx="2.2" fill="#FFE4E1" stroke="#7A464B" stroke-width="2"/>
-      <rect x="19" y="7.5" width="26" height="10.5" rx="3" fill="#BF7E81" stroke="#7A464B" stroke-width="2.4"/>
-      <path d="M44.6 15.4c1.5 1.5 2.1 3.2 1.9 5.1" fill="none" stroke="#7A464B" stroke-width="1.7" stroke-linecap="round"/>
-      <path d="M47.6 30.4c-3.5-2.8-5.6-4.8-5.6-7a3.1 3.1 0 0 1 5.6-1.8 3.1 3.1 0 0 1 5.6 1.8c0 2.2-2.1 4.2-5.6 7z" fill="#F6CFCB" stroke="#7A464B" stroke-width="2.1" stroke-linejoin="round"/>
-    </svg>
-
-    <form id="gateLogin" class="gate-view" hidden>
-      <p class="label">Welcome back</p>
-      <h2 class="gate-title">Open your <em>jars</em></h2>
-      <div class="field">
-        <label for="loginEmail">Email</label>
-        <input type="email" id="loginEmail" required autocomplete="username" placeholder="you@example.com">
-      </div>
-      <div class="field">
-        <label for="loginPass">Password</label>
-        <input type="password" id="loginPass" required autocomplete="current-password" placeholder="Your password">
-      </div>
-      <div class="gate-actions">
-        <button type="button" class="btn-ghost" id="toForgot">Forgot?</button>
-        <button type="submit" class="btn-primary" id="loginBtn">Log in</button>
-      </div>
-    </form>
-
-    <form id="gateForgot" class="gate-view" hidden>
-      <p class="label">Forgot password</p>
-      <h2 class="gate-title">Send me a <em>code</em></h2>
-      <p class="gate-sub">We'll email a six-digit code to the address on the account. It lasts ten minutes.</p>
-      <div class="field">
-        <label for="forgotEmail">Email</label>
-        <input type="email" id="forgotEmail" required autocomplete="username" placeholder="you@example.com">
-      </div>
-      <div class="gate-actions">
-        <button type="button" class="btn-ghost" id="forgotBack">Back</button>
-        <button type="submit" class="btn-primary" id="forgotBtn">Send code</button>
-      </div>
-    </form>
-
-    <form id="gateReset" class="gate-view" hidden>
-      <p class="label">Check your inbox</p>
-      <h2 class="gate-title">Set a new <em>password</em></h2>
-      <p class="gate-sub" id="resetSentTo">Enter the code we sent, then choose a new password.</p>
-      <div class="field">
-        <label for="resetCode">Code</label>
-        <input type="text" id="resetCode" required inputmode="numeric" maxlength="6" placeholder="123456" autocomplete="one-time-code">
-      </div>
-      <div class="field">
-        <label for="resetPass">New password</label>
-        <input type="password" id="resetPass" required minlength="8" autocomplete="new-password" placeholder="At least 8 characters">
-      </div>
-      <div class="field">
-        <label for="resetConfirm">Again</label>
-        <input type="password" id="resetConfirm" required autocomplete="new-password" placeholder="Repeat it">
-      </div>
-      <div class="gate-actions">
-        <button type="button" class="btn-ghost" id="resetBack">Back</button>
-        <button type="submit" class="btn-primary" id="resetBtn">Save password</button>
-      </div>
-    </form>
-
-    <p class="gate-error" id="gateError" hidden></p>
-    <p class="gate-note" id="gateNote" hidden></p>
-    <p class="gate-foot" id="gateFoot" hidden>Your jars live on each device separately, so a new device starts empty.</p>
-  </div>
-</div>
-
 <nav class="topnav">
   <div class="brandmark">
     <svg class="jar-mark" viewBox="0 0 64 64" aria-hidden="true">
@@ -756,7 +654,6 @@
     <button class="navlink" data-page="calendar">Calendar</button>
   </div>
   <div class="nav-right">
-    <button class="theme-toggle" id="logoutBtn" title="Log out" aria-label="Log out" hidden>⇥</button>
     <button class="theme-toggle" id="themeToggle" title="Switch theme" aria-label="Switch theme">☾</button>
     <button class="btn-add" id="openAddModal">+ Add a Dream</button>
   </div>
@@ -2199,143 +2096,6 @@
     }
     closeModal(); refreshActivePage();
   });
-
-  /* ---------- Login gate ----------
-     Credentials live on the server, not in this file, so a reset can actually
-     stick and nothing sensitive ships to the browser. The token below only
-     marks this device as signed in; the jars themselves are local either way. */
-  const SESSION_KEY = 'jars_session';
-  const gate = document.getElementById('gate');
-  const gateErr = document.getElementById('gateError');
-  const gateNote = document.getElementById('gateNote');
-  const gateViews = {
-    login: document.getElementById('gateLogin'),
-    forgot: document.getElementById('gateForgot'),
-    reset: document.getElementById('gateReset')
-  };
-
-  function gateShow(name) {
-    Object.entries(gateViews).forEach(([k, el]) => { el.hidden = k !== name; });
-    gateErr.hidden = true; gateNote.hidden = true;
-    document.getElementById('gateFoot').hidden = false;
-    const f = gateViews[name].querySelector('input');
-    if (f) setTimeout(() => f.focus(), 40);
-  }
-  function gateSay(m) { gateErr.textContent = m; gateErr.hidden = false; gateNote.hidden = true; }
-  function gateNoteSay(m) { gateNote.textContent = m; gateNote.hidden = false; gateErr.hidden = true; }
-
-  async function api(path, body) {
-    let r;
-    try {
-      r = await fetch('/api/' + path, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      });
-    } catch (e) {
-      throw new Error('Could not reach the server. Are you online?');
-    }
-    let data = null;
-    try { data = await r.json(); } catch (e) {}
-
-    // A non-JSON reply means the route isn't there at all — typically the app
-    // opened as a local file or from a plain static server, where /api has
-    // nothing behind it. Say so, rather than blaming the credentials.
-    // The real routes always answer with JSON, so anything else means nothing
-    // is serving /api here — usually a local copy or a plain static server.
-    if (data === null) {
-      throw new Error(`No login service at this address (${r.status}). Open the deployed site rather than a local copy.`);
-    }
-    if (!r.ok) throw new Error(data.error || `Request failed (${r.status}).`);
-    return data;
-  }
-
-  function busy(btn, on, label) {
-    btn.disabled = on;
-    if (on) { btn.dataset.was = btn.textContent; btn.textContent = label; }
-    else if (btn.dataset.was) { btn.textContent = btn.dataset.was; }
-  }
-
-  function openApp() {
-    gate.hidden = true;
-    document.getElementById('logoutBtn').hidden = false;
-    refreshActivePage();
-  }
-
-  function logOut() {
-    safeSet(SESSION_KEY, '');
-    document.getElementById('loginPass').value = '';
-    gate.hidden = false;
-    gateShow('login');
-  }
-
-  document.getElementById('gateLogin').addEventListener('submit', async e => {
-    e.preventDefault();
-    const btn = document.getElementById('loginBtn');
-    busy(btn, true, 'Checking…');
-    try {
-      const out = await api('login', {
-        email: document.getElementById('loginEmail').value,
-        password: document.getElementById('loginPass').value
-      });
-      safeSet(SESSION_KEY, out.token);
-      safeSet('jars_email', out.email);
-      openApp();
-    } catch (err) {
-      gateSay(err.message);
-      document.getElementById('loginPass').select();
-    } finally { busy(btn, false); }
-  });
-
-  document.getElementById('toForgot').addEventListener('click', () => {
-    document.getElementById('forgotEmail').value = document.getElementById('loginEmail').value || safeGet('jars_email') || '';
-    gateShow('forgot');
-  });
-  document.getElementById('forgotBack').addEventListener('click', () => gateShow('login'));
-  document.getElementById('resetBack').addEventListener('click', () => gateShow('login'));
-
-  document.getElementById('gateForgot').addEventListener('submit', async e => {
-    e.preventDefault();
-    const btn = document.getElementById('forgotBtn');
-    const email = document.getElementById('forgotEmail').value.trim();
-    busy(btn, true, 'Sending…');
-    try {
-      await api('forgot', { email });
-      document.getElementById('resetSentTo').textContent =
-        `If ${email} is registered, a code is on its way. It lasts ten minutes.`;
-      gateShow('reset');
-    } catch (err) { gateSay(err.message); }
-    finally { busy(btn, false); }
-  });
-
-  document.getElementById('gateReset').addEventListener('submit', async e => {
-    e.preventDefault();
-    const pass = document.getElementById('resetPass').value;
-    if (pass !== document.getElementById('resetConfirm').value) { gateSay("Those two don't match."); return; }
-    const btn = document.getElementById('resetBtn');
-    busy(btn, true, 'Saving…');
-    try {
-      const out = await api('reset', {
-        email: document.getElementById('forgotEmail').value,
-        code: document.getElementById('resetCode').value,
-        password: pass
-      });
-      safeSet(SESSION_KEY, out.token);
-      safeSet('jars_email', out.email);
-      openApp();
-      toast('Password changed');
-    } catch (err) { gateSay(err.message); }
-    finally { busy(btn, false); }
-  });
-
-  document.getElementById('logoutBtn').addEventListener('click', logOut);
-
-  (function startGate() {
-    document.getElementById('loginEmail').value = safeGet('jars_email') || '';
-    if (safeGet(SESSION_KEY)) { openApp(); return; }   // signed in until logged out
-    gate.hidden = false;
-    gateShow('login');
-  })();
 
   renderHome();
 </script>
