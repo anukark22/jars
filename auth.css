@@ -1,0 +1,144 @@
+/* The same rose-berry language as the planner, for the pages that sit outside it. */
+:root {
+  --cream: #F9F1E8; --cream-deep: #F2E6DA; --paper: #FFFCF8;
+  --plum: #574144; --plum-dim: rgba(87,65,68,.66); --plum-faint: rgba(87,65,68,.40);
+  --rose: #BF7E81; --rose-deep: #9A5D61; --rose-dark: #7A464B;
+  --mauve: #B79EA1; --mauve-deep: #8E767A; --blush: #FFE4E1;
+  --line: rgba(191,126,129,.30); --line-soft: rgba(191,126,129,.16);
+  --danger: #A85560; --good: #6F8F5C;
+  --shadow-tint: rgba(87,65,68,.09); --shadow-lift: rgba(87,65,68,.16);
+  --font-display: 'Cormorant Garamond', Georgia, serif;
+  --font-fancy: 'Playfair Display', Georgia, serif;
+  --font-label: 'Montserrat', 'Helvetica Neue', Arial, sans-serif;
+  --font-body: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+}
+:root[data-theme="dark"] {
+  --cream: #241B1D; --cream-deep: #2E2326; --paper: #302528;
+  --plum: #F3E8E2; --plum-dim: rgba(243,232,226,.70); --plum-faint: rgba(243,232,226,.44);
+  --rose: #D4979A; --rose-deep: #E3ACAF; --rose-dark: #C4868A;
+  --mauve: #B79EA1; --mauve-deep: #C6B0B3; --blush: #4A3639;
+  --line: rgba(212,151,154,.30); --line-soft: rgba(212,151,154,.16);
+  --danger: #E8929E; --good: #A7C08E;
+  --shadow-tint: rgba(0,0,0,.28); --shadow-lift: rgba(0,0,0,.42);
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0; min-height: 100vh; color: var(--plum);
+  font-family: var(--font-body); font-size: 15px; line-height: 1.7;
+  display: flex; align-items: center; justify-content: center; padding: 24px;
+  background:
+    radial-gradient(ellipse at 14% 4%, rgba(255,228,225,.85), transparent 42%),
+    radial-gradient(ellipse at 86% 10%, rgba(183,158,161,.30), transparent 40%),
+    radial-gradient(ellipse at 80% 92%, rgba(255,228,225,.70), transparent 44%),
+    var(--cream);
+  background-attachment: fixed;
+}
+:root[data-theme="dark"] body {
+  background:
+    radial-gradient(ellipse at 14% 4%, rgba(212,151,154,.16), transparent 42%),
+    radial-gradient(ellipse at 86% 10%, rgba(183,158,161,.14), transparent 40%),
+    radial-gradient(ellipse at 80% 92%, rgba(212,151,154,.12), transparent 44%),
+    var(--cream);
+}
+body::before {
+  content: ""; position: fixed; inset: 0; pointer-events: none;
+  background-image: radial-gradient(var(--shadow-tint) 1px, transparent 1px);
+  background-size: 3px 3px;
+}
+
+.card {
+  position: relative; width: 100%; max-width: 420px; padding: 36px;
+  background: var(--paper); border: 1px solid var(--line); border-radius: 4px;
+  box-shadow: 0 24px 60px var(--shadow-lift); text-align: center;
+  animation: rise .35s ease both;
+}
+@keyframes rise { from { opacity: 0; transform: translateY(10px) scale(.98); } to { opacity: 1; transform: none; } }
+
+.jar { width: 58px; height: 58px; display: block; margin: 0 auto 14px; }
+.label { font-family: var(--font-label); text-transform: uppercase; letter-spacing: .24em; font-size: .6rem; font-weight: 500; color: var(--rose-deep); margin: 0; }
+h1 { font-family: var(--font-display); font-size: 1.9rem; font-weight: 500; margin: 6px 0 10px; }
+h1 em { font-family: var(--font-fancy); font-style: italic; color: var(--rose-deep); }
+.sub { font-family: var(--font-display); font-style: italic; font-size: 1.05rem; color: var(--plum-dim); margin: 0 0 22px; line-height: 1.5; }
+
+.field { margin-bottom: 16px; text-align: left; }
+.field label { display: block; font-family: var(--font-label); text-transform: uppercase; letter-spacing: .17em; font-size: .53rem; font-weight: 500; color: var(--rose-deep); margin-bottom: 7px; }
+.field input:not([type="checkbox"]) {
+  width: 100%; background: var(--cream); border: 1px solid var(--line); color: var(--plum);
+  padding: 11px 13px; font-size: .9rem; font-family: var(--font-body); border-radius: 2px;
+}
+/* ---------- dialog ----------
+   Used where a native confirm() would otherwise appear, so a question about
+   someone's jars looks like the rest of the app rather than a browser alert. */
+.veil {
+  position: fixed; inset: 0; z-index: 50; display: flex;
+  align-items: center; justify-content: center; padding: 24px;
+  background: rgba(87, 65, 68, .42); backdrop-filter: blur(3px);
+  animation: fade .2s ease both;
+}
+:root[data-theme="dark"] .veil { background: rgba(0, 0, 0, .58); }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+
+.dialog {
+  width: 100%; max-width: 400px; padding: 30px; text-align: center;
+  background: var(--paper); border: 1px solid var(--line); border-radius: 4px;
+  box-shadow: 0 24px 60px var(--shadow-lift); animation: rise .28s ease both;
+}
+.dialog h2 { font-family: var(--font-display); font-size: 1.5rem; font-weight: 500; margin: 8px 0 10px; }
+.dialog h2 em { font-family: var(--font-fancy); font-style: italic; color: var(--rose-deep); }
+.dialog p { font-family: var(--font-body); font-size: .88rem; color: var(--plum-dim); margin: 0 0 18px; }
+.dialog .jar { width: 46px; height: 46px; margin-bottom: 10px; }
+.dialog .tally {
+  list-style: none; margin: 0 0 20px; padding: 14px 18px; text-align: left;
+  background: var(--cream); border: 1px solid var(--line-soft); border-radius: 3px;
+}
+.dialog .tally li {
+  font-family: var(--font-display); font-size: 1.05rem; color: var(--plum);
+  display: flex; justify-content: space-between; gap: 14px;
+}
+.dialog .tally li + li { margin-top: 4px; }
+.dialog .tally b { font-weight: 500; color: var(--rose-deep); }
+.dialog .acts { display: flex; flex-direction: column; gap: 9px; }
+
+/* The button is positioned against this wrapper rather than the whole field,
+   which would include the label above and push it out of the box. */
+.input-wrap { position: relative; display: block; }
+.field.has-reveal input { padding-right: 62px; }
+.reveal {
+  position: absolute; right: 1px; top: 1px; bottom: 1px;
+  display: flex; align-items: center;
+  padding: 0 12px; background: none; border: 0; cursor: pointer;
+  font-family: var(--font-label); text-transform: uppercase; letter-spacing: .13em;
+  font-size: .52rem; font-weight: 500; color: var(--rose-deep);
+}
+.reveal:hover:not(:disabled) { color: var(--plum); }
+.reveal:focus-visible { outline: 1px solid var(--rose); outline-offset: -2px; }
+.reveal:disabled { opacity: .5; cursor: default; }
+
+.field input::placeholder { color: var(--plum-faint); }
+.field input:focus { outline: none; border-color: var(--rose); background: var(--paper); }
+.field input:disabled { opacity: .6; }
+
+.btn {
+  font-family: var(--font-label); text-transform: uppercase; letter-spacing: .15em;
+  font-size: .6rem; font-weight: 500; padding: 13px 24px; border-radius: 999px;
+  cursor: pointer; border: 1px solid transparent; transition: background .2s, transform .2s, color .2s;
+}
+.btn-primary { background: var(--rose-deep); color: var(--cream); width: 100%; }
+.btn-primary:hover:not(:disabled) { background: var(--rose-dark); transform: translateY(-1px); }
+.btn-primary:disabled { opacity: .65; cursor: progress; transform: none; }
+.btn-ghost { background: transparent; color: var(--plum-dim); border-color: var(--line); width: 100%; }
+.btn-ghost:hover { color: var(--plum); border-color: var(--rose); }
+.btn-danger { background: var(--danger); color: var(--cream); width: 100%; }
+
+.msg { margin: 16px 0 0; font-family: var(--font-display); font-style: italic; font-size: 1rem; line-height: 1.5; }
+.msg.error { color: var(--danger); }
+.msg.good { color: var(--good); }
+.msg[hidden] { display: none; }
+
+.links { margin: 20px 0 0; display: flex; flex-direction: column; gap: 8px; }
+.links a { font-family: var(--font-label); text-transform: uppercase; letter-spacing: .13em; font-size: .58rem; color: var(--rose-deep); text-decoration: none; }
+.links a:hover { color: var(--plum); text-decoration: underline; }
+.foot { margin: 22px 0 0; font-size: .74rem; color: var(--plum-faint); line-height: 1.5; }
+
+@media (max-width: 460px) { .card { padding: 28px 22px; } h1 { font-size: 1.6rem; } }

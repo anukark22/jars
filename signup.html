@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Create an account — jars</title>
+<meta name="description" content="A soft, romantic savings planner.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Playfair+Display:ital,wght@0,500;1,500;1,600&family=Montserrat:wght@400;500;600&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="auth.css">
+<style>
+  .carry {
+    background: var(--blush); border: 1px solid var(--line); border-radius: 3px;
+    padding: 12px 14px; margin: 0 0 20px; font-family: var(--font-body);
+    font-size: .82rem; line-height: 1.55; color: var(--plum); text-align: left;
+  }
+  .carry b { font-weight: 500; color: var(--rose-deep); }
+</style>
+</head>
+<body>
+<main class="card">
+  <div id="mark"></div>
+  <p class="label">First time here</p>
+  <h1>Start your <em>jars</em></h1>
+  <p class="sub">Somewhere to save for the things you actually want.</p>
+  <p class="carry" id="carry" hidden></p>
+  <form id="form" novalidate>
+    <div class="field">
+      <label for="email">Email</label>
+      <input type="email" id="email" name="email" autocomplete="username" required placeholder="you@example.com">
+    </div>
+    <div class="field">
+      <label for="password">Password</label>
+      <input type="password" id="password" name="password" autocomplete="new-password" required minlength="8" placeholder="At least 8 characters">
+    </div>
+    <div class="field">
+      <label for="confirm">Confirm password</label>
+      <input type="password" id="confirm" name="confirm" autocomplete="new-password" required placeholder="Repeat it">
+    </div>
+    <button type="submit" class="btn btn-primary">Create account</button>
+  </form>
+  <p class="msg" id="msg" hidden></p>
+  <div class="links"><a href="login.html">I already have an account</a></div>
+  <p class="foot">Accounts are saved in this browser only. They are not a secure login and do not sync to other devices.</p>
+</main>
+
+<script src="auth.js"></script>
+<script>
+  document.getElementById('mark').innerHTML = JAR_SVG;
+  addPasswordReveals();
+  redirectIfLoggedIn();
+
+  /* Says up front what this browser already holds, so making the first account
+     reads as keeping that work rather than starting again. */
+  const waiting = legacyData();
+  if (waiting) {
+    const bits = describeLegacy(waiting);
+    if (bits.length) {
+      const list = bits.length > 1
+        ? bits.slice(0, -1).map(b => '<b>' + b + '</b>').join(', ') + ' and <b>' + bits[bits.length - 1] + '</b>'
+        : '<b>' + bits[0] + '</b>';
+      const carry = document.getElementById('carry');
+      carry.innerHTML = 'This browser already has ' + list +
+        ' saved from before there were accounts. They will be kept in this first account.';
+      carry.hidden = false;
+    }
+  }
+
+  const form = document.getElementById('form');
+  const msg = document.getElementById('msg');
+
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+    clearSay(msg);
+    const out = signUp(form.email.value, form.password.value, form.confirm.value);
+    if (out.error) { say(msg, out.error); return; }
+    location.href = 'index.html';       // signed in already
+  });
+</script>
+</body>
+</html>

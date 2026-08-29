@@ -19,6 +19,10 @@
     } catch (e) { document.documentElement.setAttribute('data-theme', 'light'); }
   })();
 </script>
+<!-- Accounts. Loaded here so the check happens before anything is painted:
+     without a signed-in user this page never renders at all. -->
+<script src="auth.js"></script>
+<script>requireAuth();</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500;1,600&family=Playfair+Display:ital,wght@0,400;0,500;1,400;1,500;1,600&family=Montserrat:wght@400;500;600&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
@@ -655,6 +659,7 @@
   </div>
   <div class="nav-right">
     <button class="theme-toggle" id="themeToggle" title="Switch theme" aria-label="Switch theme">☾</button>
+    <button class="theme-toggle" id="logoutBtn" title="Log out" aria-label="Log out">⏻</button>
     <button class="btn-add" id="openAddModal">+ Add a Dream</button>
   </div>
 </nav>
@@ -954,9 +959,30 @@
 
   function rid() { return 'g_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36); }
 
-  // Storage can be blocked entirely (file:// in some browsers) — never let that break the app.
-  function safeGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
-  function safeSet(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* in-memory only */ } }
+  /* Everything the planner saves goes into the signed-in account's own bucket
+     rather than a shared key, so two people on one browser never see each
+     other's jars. The load and save functions below are unchanged — only where
+     they read and write has moved.
+
+     Storage can be blocked entirely (file:// in some browsers) — never let that
+     break the app. */
+  function safeGet(k) {
+    if (k === THEME_KEY) return rawGet(k);   // how the screen looks is the device's, not the account's
+    const u = currentUser();
+    if (!u || !u.data) return null;
+    return k in u.data ? u.data[k] : null;
+  }
+  function safeSet(k, v) {
+    if (k === THEME_KEY) { rawSet(k, v); return; }
+    const u = currentUser();
+    if (!u) return;                          // signed out mid-session: drop it rather than leak it
+    const users = getUsers();
+    const i = users.findIndex(x => x.id === u.id);
+    if (i < 0) return;
+    if (!users[i].data) users[i].data = {};
+    users[i].data[k] = v;
+    setUsers(users);
+  }
 
   function loadGoals() {
     const raw = safeGet(STORAGE_KEY);
@@ -1079,6 +1105,15 @@
     const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
     applyTheme(next);
     safeSet(THEME_KEY, next);
+  });
+
+  /* ---------- log out ---------- */
+  const meNow = currentUser();
+  const logoutBtn = document.getElementById('logoutBtn');
+  logoutBtn.title = meNow ? 'Log out of ' + meNow.email : 'Log out';
+  logoutBtn.addEventListener('click', () => {
+    // The jars stay saved against the account; only the session goes.
+    if (confirm('Log out?' + (meNow ? '\n\nYour jars stay saved to ' + meNow.email + '.' : ''))) logOut();
   });
 
   let toastTimer = null;

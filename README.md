@@ -28,6 +28,40 @@ Putting money into a jar takes it out of your wallet, whether you use the card's
 - Optional checklists on experiences and celebrations
 - Works even where browser storage is blocked, just without saving between visits
 
+
+## Accounts
+
+There are local accounts, so two people sharing a browser keep separate jars.
+Sign up, log in, log out and a password reset all live in `login.html`,
+`signup.html` and `forgot-password.html`, with the logic in `auth.js`.
+
+```
+localStorage
+  users        [ { id, email, password, createdAt, data: { ...the planner keys } } ]
+  currentUser  the id of whoever is signed in
+```
+
+The planner writes through `safeGet`/`safeSet`, and those two functions are the
+only thing that changed: they now read and write inside the signed-in account's
+`data` rather than a shared key. Every load and save function above them is
+untouched. The theme stays outside the accounts, since how the screen looks
+belongs to the device rather than the person.
+
+Jars saved before accounts existed are copied into the first account made, and
+the original keys are left where they are rather than deleted.
+
+### What this is not
+
+**It is not secure, and it is not a real login.** Passwords are kept as plain
+text in the same browser storage as everything else, because there is nothing
+else here to check them against. Anyone who can open this device can read them,
+and the password reset asks only for an email address — no proof of anything.
+
+It keeps two people's jars apart on one laptop. That is all it does. Accounts
+live in one browser on one device: they do not sync, and clearing site data
+removes them. Do not put anything sensitive in it, and do not reuse a password
+you use elsewhere.
+
 ## Files
 
 | File | |
