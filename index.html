@@ -339,6 +339,7 @@
   .gate-actions button { flex: 1; }
   .gate-error { margin: 16px 0 0; font-size: 0.85rem; color: var(--danger); font-family: var(--font-display); font-style: italic; }
   .gate-foot { margin: 18px 0 0; font-size: 0.76rem; color: var(--plum-faint); line-height: 1.5; }
+  .gate-note { margin: 16px 0 0; font-size: 0.85rem; color: var(--rose-deep); font-family: var(--font-display); font-style: italic; }
   .snippet {
     text-align: left; font-family: 'Montserrat', monospace; font-size: 0.68rem; line-height: 1.7;
     background: var(--cream); border: 1px dashed var(--line); border-radius: 3px;
@@ -676,47 +677,49 @@
         <input type="password" id="loginPass" required autocomplete="current-password" placeholder="Your password">
       </div>
       <div class="gate-actions">
+        <button type="button" class="btn-ghost" id="toForgot">Forgot?</button>
         <button type="submit" class="btn-primary" id="loginBtn">Log in</button>
       </div>
     </form>
 
-    <!-- Only appears while no credentials are compiled in. Runs entirely in this
-         browser: the password is turned into a salt and hash to paste into the
-         file, and is never sent or stored anywhere. -->
-    <form id="gateSetup" class="gate-view" hidden>
-      <p class="label">One-time setup</p>
-      <h2 class="gate-title">Choose your <em>login</em></h2>
-      <p class="gate-sub">This runs here in your browser. You'll get a snippet to paste into the file — your password itself never leaves this page.</p>
+    <form id="gateForgot" class="gate-view" hidden>
+      <p class="label">Forgot password</p>
+      <h2 class="gate-title">Send me a <em>code</em></h2>
+      <p class="gate-sub">We'll email a six-digit code to the address on the account. It lasts ten minutes.</p>
       <div class="field">
-        <label for="setupEmail">Email</label>
-        <input type="email" id="setupEmail" required autocomplete="off" placeholder="you@example.com">
-      </div>
-      <div class="field">
-        <label for="setupPass">Password</label>
-        <input type="password" id="setupPass" required minlength="8" autocomplete="new-password" placeholder="At least 8 characters">
-      </div>
-      <div class="field">
-        <label for="setupConfirm">Again</label>
-        <input type="password" id="setupConfirm" required autocomplete="new-password" placeholder="Repeat it">
+        <label for="forgotEmail">Email</label>
+        <input type="email" id="forgotEmail" required autocomplete="username" placeholder="you@example.com">
       </div>
       <div class="gate-actions">
-        <button type="button" class="btn-ghost" id="setupSkip">Skip</button>
-        <button type="submit" class="btn-primary">Generate</button>
+        <button type="button" class="btn-ghost" id="forgotBack">Back</button>
+        <button type="submit" class="btn-primary" id="forgotBtn">Send code</button>
       </div>
     </form>
 
-    <div id="gateSnippet" class="gate-view" hidden>
-      <p class="label">Paste this into index.html</p>
-      <h2 class="gate-title">Your <em>credentials</em></h2>
-      <p class="gate-sub">Replace the <code>AUTH</code> block near the top of the script. It holds only a salt and a hash — safe to share; your password cannot be read back from it.</p>
-      <pre class="snippet" id="snippetOut"></pre>
-      <div class="gate-actions">
-        <button type="button" class="btn-ghost" id="copySnippet">Copy</button>
-        <button type="button" class="btn-primary" id="snippetDone">Done</button>
+    <form id="gateReset" class="gate-view" hidden>
+      <p class="label">Check your inbox</p>
+      <h2 class="gate-title">Set a new <em>password</em></h2>
+      <p class="gate-sub" id="resetSentTo">Enter the code we sent, then choose a new password.</p>
+      <div class="field">
+        <label for="resetCode">Code</label>
+        <input type="text" id="resetCode" required inputmode="numeric" maxlength="6" placeholder="123456" autocomplete="one-time-code">
       </div>
-    </div>
+      <div class="field">
+        <label for="resetPass">New password</label>
+        <input type="password" id="resetPass" required minlength="8" autocomplete="new-password" placeholder="At least 8 characters">
+      </div>
+      <div class="field">
+        <label for="resetConfirm">Again</label>
+        <input type="password" id="resetConfirm" required autocomplete="new-password" placeholder="Repeat it">
+      </div>
+      <div class="gate-actions">
+        <button type="button" class="btn-ghost" id="resetBack">Back</button>
+        <button type="submit" class="btn-primary" id="resetBtn">Save password</button>
+      </div>
+    </form>
 
     <p class="gate-error" id="gateError" hidden></p>
+    <p class="gate-note" id="gateNote" hidden></p>
     <p class="gate-foot" id="gateFoot" hidden>Your jars live on each device separately, so a new device starts empty.</p>
   </div>
 </div>
@@ -1043,22 +1046,6 @@
 </div>
 
 <script>
-  /* ─── Login ────────────────────────────────────────────────────────────
-     Compiled in, so any device that loads this page can check the password
-     without a server. Holds only a salt and a PBKDF2 hash — the password
-     itself is not recoverable from these. Leave hash empty to be prompted
-     to generate a new pair.
-
-     Note this file is public: the hash can be downloaded and attacked
-     offline, which the iteration count is there to slow down. Use a long,
-     unique password.                                                      */
-  const AUTH = {
-    email: '',
-    salt: '',
-    hash: '',
-    iterations: 310000
-  };
-
   const USER_NAME = 'Anuka';
   const STORAGE_KEY = 'dreamreel_goals';
   const FUNDING_KEY = 'dreamreel_funding_log';
@@ -2213,57 +2200,62 @@
     closeModal(); refreshActivePage();
   });
 
-  /* ---------- Login gate ---------- */
+  /* ---------- Login gate ----------
+     Credentials live on the server, not in this file, so a reset can actually
+     stick and nothing sensitive ships to the browser. The token below only
+     marks this device as signed in; the jars themselves are local either way. */
   const SESSION_KEY = 'jars_session';
   const gate = document.getElementById('gate');
   const gateErr = document.getElementById('gateError');
+  const gateNote = document.getElementById('gateNote');
   const gateViews = {
     login: document.getElementById('gateLogin'),
-    setup: document.getElementById('gateSetup'),
-    snippet: document.getElementById('gateSnippet')
+    forgot: document.getElementById('gateForgot'),
+    reset: document.getElementById('gateReset')
   };
 
   function gateShow(name) {
     Object.entries(gateViews).forEach(([k, el]) => { el.hidden = k !== name; });
-    gateErr.hidden = true;
-    document.getElementById('gateFoot').hidden = name === 'snippet';
+    gateErr.hidden = true; gateNote.hidden = true;
+    document.getElementById('gateFoot').hidden = false;
     const f = gateViews[name].querySelector('input');
     if (f) setTimeout(() => f.focus(), 40);
   }
-  function gateSay(m) { gateErr.textContent = m; gateErr.hidden = false; }
+  function gateSay(m) { gateErr.textContent = m; gateErr.hidden = false; gateNote.hidden = true; }
+  function gateNoteSay(m) { gateNote.textContent = m; gateNote.hidden = false; gateErr.hidden = true; }
 
-  const toHex = b => Array.from(b).map(x => x.toString(16).padStart(2, '0')).join('');
-  const fromHex = h => new Uint8Array((h.match(/.{1,2}/g) || []).map(x => parseInt(x, 16)));
-
-  // PBKDF2-SHA256. Deliberately slow so an offline attack on the public hash costs.
-  async function derive(password, saltHex, iterations) {
-    if (!(window.crypto && crypto.subtle)) throw new Error('This browser cannot hash securely here.');
-    const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits']);
-    const bits = await crypto.subtle.deriveBits(
-      { name: 'PBKDF2', salt: fromHex(saltHex), iterations, hash: 'SHA-256' }, key, 256);
-    return toHex(new Uint8Array(bits));
+  async function api(path, body) {
+    let r;
+    try {
+      r = await fetch('/api/' + path, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+    } catch (e) {
+      throw new Error('Could not reach the server. Are you online?');
+    }
+    let data = {};
+    try { data = await r.json(); } catch (e) {}
+    if (!r.ok) throw new Error(data.error || 'Something went wrong.');
+    return data;
   }
 
-  // length-independent compare, so timing doesn't leak the hash
-  function sameHash(a, b) {
-    if (a.length !== b.length) return false;
-    let diff = 0;
-    for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-    return diff === 0;
+  function busy(btn, on, label) {
+    btn.disabled = on;
+    if (on) { btn.dataset.was = btn.textContent; btn.textContent = label; }
+    else if (btn.dataset.was) { btn.textContent = btn.dataset.was; }
   }
-
-  function isConfigured() { return !!(AUTH.hash && AUTH.salt && AUTH.email); }
 
   function openApp() {
     gate.hidden = true;
-    document.getElementById('logoutBtn').hidden = !isConfigured();
+    document.getElementById('logoutBtn').hidden = false;
     refreshActivePage();
   }
 
   function logOut() {
     safeSet(SESSION_KEY, '');
     document.getElementById('loginPass').value = '';
-    document.getElementById('loginEmail').value = AUTH.email || '';
     gate.hidden = false;
     gateShow('login');
   }
@@ -2271,62 +2263,69 @@
   document.getElementById('gateLogin').addEventListener('submit', async e => {
     e.preventDefault();
     const btn = document.getElementById('loginBtn');
-    const email = document.getElementById('loginEmail').value.trim().toLowerCase();
-    const pass = document.getElementById('loginPass').value;
-    btn.disabled = true; btn.textContent = 'Checking…';
+    busy(btn, true, 'Checking…');
     try {
-      const got = await derive(pass, AUTH.salt, AUTH.iterations);
-      // check both together so neither is revealed as the wrong one
-      if (email === AUTH.email.toLowerCase() && sameHash(got, AUTH.hash)) {
-        safeSet(SESSION_KEY, '1');
-        openApp();
-      } else {
-        gateSay('That email and password do not match.');
-        document.getElementById('loginPass').select();
-      }
+      const out = await api('login', {
+        email: document.getElementById('loginEmail').value,
+        password: document.getElementById('loginPass').value
+      });
+      safeSet(SESSION_KEY, out.token);
+      safeSet('jars_email', out.email);
+      openApp();
     } catch (err) {
       gateSay(err.message);
-    } finally {
-      btn.disabled = false; btn.textContent = 'Log in';
-    }
+      document.getElementById('loginPass').select();
+    } finally { busy(btn, false); }
   });
 
-  document.getElementById('gateSetup').addEventListener('submit', async e => {
+  document.getElementById('toForgot').addEventListener('click', () => {
+    document.getElementById('forgotEmail').value = document.getElementById('loginEmail').value || safeGet('jars_email') || '';
+    gateShow('forgot');
+  });
+  document.getElementById('forgotBack').addEventListener('click', () => gateShow('login'));
+  document.getElementById('resetBack').addEventListener('click', () => gateShow('login'));
+
+  document.getElementById('gateForgot').addEventListener('submit', async e => {
     e.preventDefault();
-    const email = document.getElementById('setupEmail').value.trim().toLowerCase();
-    const pass = document.getElementById('setupPass').value;
-    const again = document.getElementById('setupConfirm').value;
-    if (pass.length < 8) { gateSay('Use at least 8 characters.'); return; }
-    if (pass !== again) { gateSay("Those two don't match."); return; }
+    const btn = document.getElementById('forgotBtn');
+    const email = document.getElementById('forgotEmail').value.trim();
+    busy(btn, true, 'Sending…');
     try {
-      const salt = toHex(crypto.getRandomValues(new Uint8Array(16)));
-      const hash = await derive(pass, salt, AUTH.iterations);
-      document.getElementById('snippetOut').textContent =
-        `const AUTH = {\n` +
-        `  email: '${email}',\n` +
-        `  salt: '${salt}',\n` +
-        `  hash: '${hash}',\n` +
-        `  iterations: ${AUTH.iterations}\n` +
-        `};`;
-      gateShow('snippet');
+      await api('forgot', { email });
+      document.getElementById('resetSentTo').textContent =
+        `If ${email} is registered, a code is on its way. It lasts ten minutes.`;
+      gateShow('reset');
     } catch (err) { gateSay(err.message); }
+    finally { busy(btn, false); }
   });
 
-  document.getElementById('setupSkip').addEventListener('click', () => { safeSet(SESSION_KEY, '1'); openApp(); });
-  document.getElementById('snippetDone').addEventListener('click', () => { safeSet(SESSION_KEY, '1'); openApp(); });
-  document.getElementById('copySnippet').addEventListener('click', async () => {
-    try { await navigator.clipboard.writeText(document.getElementById('snippetOut').textContent); toast('Copied'); }
-    catch (err) { gateSay('Copy failed — select the text and copy it by hand.'); }
+  document.getElementById('gateReset').addEventListener('submit', async e => {
+    e.preventDefault();
+    const pass = document.getElementById('resetPass').value;
+    if (pass !== document.getElementById('resetConfirm').value) { gateSay("Those two don't match."); return; }
+    const btn = document.getElementById('resetBtn');
+    busy(btn, true, 'Saving…');
+    try {
+      const out = await api('reset', {
+        email: document.getElementById('forgotEmail').value,
+        code: document.getElementById('resetCode').value,
+        password: pass
+      });
+      safeSet(SESSION_KEY, out.token);
+      safeSet('jars_email', out.email);
+      openApp();
+      toast('Password changed');
+    } catch (err) { gateSay(err.message); }
+    finally { busy(btn, false); }
   });
+
   document.getElementById('logoutBtn').addEventListener('click', logOut);
 
   (function startGate() {
-    if (!isConfigured()) {           // nothing compiled in yet
-      if (safeGet(SESSION_KEY) === '1') { openApp(); return; }
-      gate.hidden = false; gateShow('setup'); return;
-    }
-    if (safeGet(SESSION_KEY) === '1') { openApp(); return; }  // stays logged in
-    logOut();
+    document.getElementById('loginEmail').value = safeGet('jars_email') || '';
+    if (safeGet(SESSION_KEY)) { openApp(); return; }   // signed in until logged out
+    gate.hidden = false;
+    gateShow('login');
   })();
 
   renderHome();
