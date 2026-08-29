@@ -2,11 +2,13 @@ import { Router } from 'express';
 import {
   findUserByEmail, findUserById, createUser, updatePasswordHash, deleteUser,
   createResetToken, findResetToken, markResetTokenUsed, invalidateUserResetTokens,
-  deleteUserSessions, userHasData
+  deleteUserSessions, userHasData,
+  setRecoveryCode, clearRecoveryCode, recoveryCodeSetAt
 } from '../db.js';
 import {
   hashPassword, verifyPassword, startSession, endSession, requireAuth,
-  normaliseEmail, isEmail, passwordProblem, randomToken, sha256, rateLimit
+  normaliseEmail, isEmail, passwordProblem, randomToken, sha256, rateLimit,
+  generateRecoveryCode, normaliseCode, sameDigest
 } from '../auth.js';
 import { sendMail, resetEmail, emailMode } from '../email.js';
 
@@ -18,13 +20,20 @@ const loginLimit  = rateLimit({ name: 'login',  windowMs: 15 * 60000, max: 10, k
 const signupLimit = rateLimit({ name: 'signup', windowMs: 60 * 60000, max: 5,  key: byIp });
 const forgotLimit = rateLimit({ name: 'forgot', windowMs: 15 * 60000, max: 5,  key: byIp });
 const resetLimit  = rateLimit({ name: 'reset',  windowMs: 15 * 60000, max: 10, key: byIp });
+// Tighter than the rest: this one is guessed at, not forgotten.
+const recoverLimit = rateLimit({ name: 'recover', windowMs: 60 * 60000, max: 5, key: byIp });
 
 const publicUser = u => ({ id: u.id, email: u.email });
 
 /* ---------- who am I ---------- */
 router.get('/me', (req, res) => {
   if (!req.user) return res.json({ authenticated: false });
-  res.json({ authenticated: true, user: publicUser(req.user), hasData: userHasData(req.user.id) });
+  res.json({
+    authenticated: true,
+    user: publicUser(req.user),
+    hasData: userHasData(req.user.id),
+    recoveryCodeSetAt: recoveryCodeSetAt(req.user.id)   // the date only, never the code
+  });
 });
 
 /* ---------- sign up ---------- */
@@ -153,6 +162,61 @@ router.post('/delete-account', requireAuth, async (req, res, next) => {
     }
     deleteUser(req.user.id);   // jars, wallet, savings and sessions cascade away
     endSession(req, res);
+    res.json({ ok: true });
+  } catch (err) { next(err); }
+});
+
+/* ---------- recovery code ----------
+   A way back in that doesn't need email. Shown once, at the moment it is made,
+   and only ever stored as a hash — nobody can read it back out afterwards. */
+
+router.post('/recovery-code', requireAuth, async (req, res, next) => {
+  try {
+    // Same bar as changing the password, since this is worth as much as one.
+    const full = findUserByEmail(req.user.email);
+    if (!full || !await verifyPassword(req.body?.password || '', full.password_hash)) {
+      return res.status(401).json({ error: 'Your password is not right.' });
+    }
+    const code = generateRecoveryCode();
+    setRecoveryCode(req.user.id, sha256(normaliseCode(code)));   // replaces any earlier one
+    res.json({ ok: true, code });
+  } catch (err) { next(err); }
+});
+
+router.post('/recovery-code/remove', requireAuth, async (req, res, next) => {
+  try {
+    const full = findUserByEmail(req.user.email);
+    if (!full || !await verifyPassword(req.body?.password || '', full.password_hash)) {
+      return res.status(401).json({ error: 'Your password is not right.' });
+    }
+    clearRecoveryCode(req.user.id);
+    res.json({ ok: true });
+  } catch (err) { next(err); }
+});
+
+/* Trades a recovery code for a new password. Used up in the process, so a code
+   written on paper can only ever let someone in once. */
+router.post('/recover', recoverLimit, async (req, res, next) => {
+  try {
+    const email = normaliseEmail(req.body?.email);
+    const code = normaliseCode(req.body?.code);
+    const { password, confirm } = req.body || {};
+
+    const pwProblem = passwordProblem(password);
+    if (pwProblem) return res.status(400).json({ error: pwProblem });
+    if (password !== confirm) return res.status(400).json({ error: 'Those two passwords do not match.' });
+
+    const user = isEmail(email) ? findUserByEmail(email) : null;
+    // One answer for a wrong address, a missing code and a wrong code alike.
+    const wrong = { error: 'That email and recovery code do not match.' };
+    if (!user || !user.recovery_code_hash || !code) return res.status(401).json(wrong);
+
+    if (!sameDigest(sha256(code), user.recovery_code_hash)) return res.status(401).json(wrong);
+
+    updatePasswordHash(user.id, await hashPassword(password));
+    clearRecoveryCode(user.id);              // burnt: one use only
+    invalidateUserResetTokens(user.id);
+    deleteUserSessions(user.id);             // every device signed out
     res.json({ ok: true });
   } catch (err) { next(err); }
 });

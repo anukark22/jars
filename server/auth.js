@@ -12,6 +12,32 @@ export const verifyPassword = (pw, hash) => bcrypt.compare(pw, hash);
 export const randomToken = () => crypto.randomBytes(32).toString('base64url');
 export const sha256 = v => crypto.createHash('sha256').update(String(v)).digest('hex');
 
+/* ---------- recovery codes ----------
+   Written down rather than remembered, so this is drawn at random rather than
+   made memorable. 0/O and 1/I/L are left out because they get misread on paper.
+   20 characters of a 31-letter alphabet is 99 bits — far past guessing. */
+const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+export function generateRecoveryCode() {
+  const chars = [];
+  // Rejection sampling, so every letter is equally likely.
+  while (chars.length < 20) {
+    const b = crypto.randomBytes(1)[0];
+    if (b < 256 - (256 % CODE_ALPHABET.length)) chars.push(CODE_ALPHABET[b % CODE_ALPHABET.length]);
+  }
+  return chars.join('').replace(/(.{5})(?=.)/g, '$1-');   // XXXXX-XXXXX-XXXXX-XXXXX
+}
+
+/* Dashes, spaces and case are all forgiven when it's typed back in. */
+export const normaliseCode = v => String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+
+/* Compares two hex digests without leaking, through timing, how far along they
+   first differed. */
+export function sameDigest(a, b) {
+  const x = Buffer.from(String(a));
+  const y = Buffer.from(String(b));
+  return x.length === y.length && crypto.timingSafeEqual(x, y);
+}
+
 function cookieOptions() {
   return {
     httpOnly: true,                                  // unreadable from JavaScript

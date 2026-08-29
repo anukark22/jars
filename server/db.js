@@ -113,6 +113,14 @@ db.exec(`
   );
 `);
 
+/* Added after the first release, so it has to be a migration rather than part
+   of CREATE TABLE — existing accounts keep their rows and start with no code. */
+const userColumns = db.prepare('PRAGMA table_info(users)').all().map(c => c.name);
+if (!userColumns.includes('recovery_code_hash')) {
+  db.exec('ALTER TABLE users ADD COLUMN recovery_code_hash TEXT');
+  db.exec('ALTER TABLE users ADD COLUMN recovery_code_set_at TEXT');
+}
+
 /* ---------- users ---------- */
 export const findUserByEmail = email =>
   db.prepare('SELECT * FROM users WHERE email = ?').get(email);
@@ -125,6 +133,18 @@ export const updatePasswordHash = (userId, hash) =>
     .run(hash, userId);
 export const deleteUser = userId =>
   db.prepare('DELETE FROM users WHERE id = ?').run(userId);
+
+/* ---------- recovery code ----------
+   A single spare key to the account, for when email isn't an option. Only its
+   hash is kept, so the stored value cannot be used to get in. */
+export const setRecoveryCode = (userId, hash) =>
+  db.prepare("UPDATE users SET recovery_code_hash = ?, recovery_code_set_at = datetime('now') WHERE id = ?")
+    .run(hash, userId);
+export const clearRecoveryCode = userId =>
+  db.prepare('UPDATE users SET recovery_code_hash = NULL, recovery_code_set_at = NULL WHERE id = ?')
+    .run(userId);
+export const recoveryCodeSetAt = userId =>
+  db.prepare('SELECT recovery_code_set_at AS at FROM users WHERE id = ?').get(userId)?.at || null;
 
 /* ---------- sessions ---------- */
 export const createSession = (token, userId, expiresAt) =>

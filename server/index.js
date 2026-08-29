@@ -29,6 +29,7 @@ app.get('/login', page('login.html'));
 app.get('/signup', page('signup.html'));
 app.get('/forgot-password', page('forgot-password.html'));
 app.get('/reset-password', page('reset-password.html'));
+app.get('/recover', page('recover.html'));
 
 // The planner and the account page are private: without a session the browser
 // is sent to the login page, carrying where it was headed.

@@ -21,6 +21,24 @@
   .danger h2 { color: var(--danger); }
   .row { display: flex; gap: 10px; }
   .row .btn { flex: 1; }
+  .state { font-family: var(--font-body); font-size: 0.88rem; color: var(--plum-dim);
+           text-align: center; margin: 0 0 18px; }
+  .code-box { background: var(--cream); border: 1px solid var(--rose); border-radius: 3px;
+              padding: 18px; margin-bottom: 20px; text-align: center; }
+  .code-box .label { margin-bottom: 10px; }
+  .code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+          font-size: 1.15rem; letter-spacing: 0.1em; color: var(--plum);
+          word-break: break-all; margin: 0 0 14px; user-select: all; }
+  .warn { font-family: var(--font-body); font-size: 0.8rem; color: var(--plum-dim);
+          margin: 12px 0 0; line-height: 1.5; }
+  /* Visibility rather than display, so hiding an ancestor doesn't take the
+     code box down with it. */
+  @media print {
+    body * { visibility: hidden; }
+    .code-box, .code-box * { visibility: visible; }
+    .code-box .row { display: none; }
+    .code-box { position: absolute; left: 0; top: 0; width: 100%; border: none; }
+  }
 </style>
 </head>
 <body>
@@ -58,6 +76,31 @@
       <button type="submit" class="btn btn-primary">Change password</button>
     </form>
     <p class="msg" id="pwMsg" hidden></p>
+  </section>
+
+  <section class="sect">
+    <h2>Recovery code</h2>
+    <p class="note">A way back in if you forget your password and can't use email.</p>
+    <p class="state" id="recState">…</p>
+
+    <div class="code-box" id="codeBox" hidden>
+      <p class="label">Write this down now</p>
+      <p class="code" id="codeText"></p>
+      <div class="row">
+        <button class="btn btn-ghost" id="copyCode" type="button">Copy</button>
+        <button class="btn btn-ghost" id="printCode" type="button">Print</button>
+      </div>
+      <p class="warn">This is the only time it will be shown. It replaces any earlier code, works once, and is used up when you do.</p>
+    </div>
+
+    <form id="recForm" novalidate>
+      <div class="field">
+        <label for="recPass">Confirm with your password</label>
+        <input type="password" id="recPass" autocomplete="current-password" required>
+      </div>
+      <button type="submit" class="btn btn-primary" id="recBtn">Generate a code</button>
+    </form>
+    <p class="msg" id="recMsg" hidden></p>
   </section>
 
   <section class="sect danger">
@@ -106,6 +149,62 @@ pwForm.addEventListener('submit', async e => {
   } catch (err) { say(pwMsg, err.message); }
   finally { submitting(pwForm, false); }
 });
+
+/* ---------- recovery code ---------- */
+const recForm = document.getElementById('recForm');
+const recMsg = document.getElementById('recMsg');
+const recState = document.getElementById('recState');
+const recBtn = document.getElementById('recBtn');
+const codeBox = document.getElementById('codeBox');
+const codeText = document.getElementById('codeText');
+
+function showState(at) {
+  if (at) {
+    const when = new Date(at.replace(' ', 'T') + 'Z').toLocaleDateString(undefined,
+      { day: 'numeric', month: 'long', year: 'numeric' });
+    recState.textContent = `A code is saved, made on ${when}. Generating a new one replaces it.`;
+    recBtn.textContent = 'Replace my code';
+  } else {
+    recState.textContent = 'You don’t have one yet.';
+    recBtn.textContent = 'Generate a code';
+  }
+}
+showState(me.recoveryCodeSetAt);
+
+recForm.addEventListener('submit', async e => {
+  e.preventDefault();
+  clearSay(recMsg);
+  codeBox.hidden = true;
+
+  submitting(recForm, true, 'Generating…');
+  let madeAt = null;
+  try {
+    const out = await api('/api/auth/recovery-code', { password: recForm.recPass.value });
+    recForm.reset();
+    codeText.textContent = out.code;
+    codeBox.hidden = false;
+    madeAt = new Date().toISOString().slice(0, 19).replace('T', ' ');
+  } catch (err) { say(recMsg, err.message); }
+  finally { submitting(recForm, false); }
+
+  // After submitting(), which puts the button's old label back and would
+  // otherwise undo this.
+  if (madeAt) {
+    showState(madeAt);
+    codeBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+});
+
+document.getElementById('copyCode').addEventListener('click', async e => {
+  try {
+    await navigator.clipboard.writeText(codeText.textContent);
+    e.target.textContent = 'Copied';
+    setTimeout(() => { e.target.textContent = 'Copy'; }, 1600);
+  } catch (err) {
+    say(recMsg, 'Copying isn’t allowed here — select the code and copy it by hand.');
+  }
+});
+document.getElementById('printCode').addEventListener('click', () => window.print());
 
 const delForm = document.getElementById('delForm');
 const delMsg = document.getElementById('delMsg');

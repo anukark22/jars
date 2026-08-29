@@ -76,6 +76,25 @@ that way.
 | `EMAIL_PASSWORD` | to send mail | SMTP password. |
 | `EMAIL_FROM` | to send mail | The From address, e.g. `jars <no-reply@yourdomain.com>`. |
 
+## Recovery codes
+
+There's a second way back into an account that doesn't involve email at all.
+On `/account`, confirm your password and generate a **recovery code** — twenty
+random characters, shown once. Write it down.
+
+If you're ever locked out, `/recover` takes that code plus your email and lets
+you set a new password. Dashes, spaces and capitals don't matter when you type
+it back in.
+
+A code is used up the moment it works, and everything signed in is signed out,
+so the one on your paper can only ever let someone in once. Generate a fresh
+one from `/account` afterwards. Making a new code replaces any earlier one.
+
+Only a SHA-256 hash of the code is stored, so it can't be read back out of the
+database — if you lose the paper, generate another rather than going looking
+for it. It is worth as much as your password: keep it somewhere a stranger
+won't find it, and it's the one thing that still works when email is down.
+
 ## Email for password resets
 
 Mail goes out through nodemailer. The transport is chosen once at startup: if
@@ -139,13 +158,15 @@ rewriting that one file and nothing else.
 - Reset tokens are random, stored only as a SHA-256 hash, single-use, and expire. Using one signs every device out. Requesting a new one voids the old.
 - Login answers identically for an unknown address and a wrong password, and hashes a dummy value when the user doesn't exist so the two take the same time. "Forgot password" always gives the same reply.
 - Password hashes are never returned by any endpoint.
-- Signup, login, forgot and reset are rate-limited per IP.
+- Recovery codes are 99 bits of randomness, stored only as a SHA-256 hash, compared in constant time, single-use, and burnt on use. Making one needs your password.
+- Signup, login, forgot, reset and recover are rate-limited per IP.
 - Errors reach the browser as plain sentences; stack traces and SQL errors stay in the log.
 
 ## Database
 
 ```
 users                 id, email (unique, case-insensitive), password_hash,
+                      recovery_code_hash, recovery_code_set_at,
                       created_at, updated_at
 
 sessions              token (pk), user_id → users, expires_at, created_at
@@ -177,7 +198,7 @@ Pages:
 | --- | --- |
 | `GET /` | The planner — redirects to `/login?next=…` without a session |
 | `GET /account` | Account settings — same guard |
-| `GET /login`, `/signup`, `/forgot-password`, `/reset-password` | Public |
+| `GET /login`, `/signup`, `/forgot-password`, `/reset-password`, `/recover` | Public |
 
 Accounts, under `/api/auth`:
 
@@ -191,6 +212,9 @@ Accounts, under `/api/auth`:
 | `POST /reset-password` | token, password, confirm → signs every device out |
 | `POST /change-password` | current, password, confirm → keeps this session, drops the others |
 | `POST /delete-account` | password → deletes everything |
+| `POST /recovery-code` | password → makes a code and returns it, once |
+| `POST /recovery-code/remove` | password → throws the current code away |
+| `POST /recover` | email, code, password, confirm → new password, code used up |
 | `GET /email-mode` | Whether mail is going to SMTP or the console |
 
 Data, under `/api` — all of it requires a session:

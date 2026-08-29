@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Use a recovery code — jars</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Playfair+Display:ital,wght@0,500;1,500;1,600&family=Montserrat:wght@400;500;600&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/auth.css">
+<style>
+  #code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+          letter-spacing: 0.12em; text-transform: uppercase; }
+</style>
+</head>
+<body>
+<main class="card">
+  <div id="mark"></div>
+  <p class="label">Recovery code</p>
+  <h1>Let me back <em>in</em></h1>
+  <p class="sub">Enter the code you saved. It works once, then a fresh one is waiting for you in your account.</p>
+  <form id="form" novalidate>
+    <div class="field">
+      <label for="email">Email</label>
+      <input type="email" id="email" name="email" autocomplete="username" required placeholder="you@example.com">
+    </div>
+    <div class="field">
+      <label for="code">Recovery code</label>
+      <input type="text" id="code" name="code" required autocomplete="one-time-code"
+             spellcheck="false" placeholder="XXXXX-XXXXX-XXXXX-XXXXX">
+    </div>
+    <div class="field">
+      <label for="password">New password</label>
+      <input type="password" id="password" autocomplete="new-password" required minlength="8" placeholder="At least 8 characters">
+    </div>
+    <div class="field">
+      <label for="confirm">Confirm new password</label>
+      <input type="password" id="confirm" autocomplete="new-password" required>
+    </div>
+    <button type="submit" class="btn btn-primary">Set new password</button>
+  </form>
+  <p class="msg" id="msg" hidden></p>
+  <div class="links"><a href="/forgot-password">Email me a link instead</a> · <a href="/login">Back to log in</a></div>
+</main>
+
+<script type="module">
+import { JAR_SVG, api, say, clearSay, submitting } from '/auth.js';
+document.getElementById('mark').innerHTML = JAR_SVG;
+
+const form = document.getElementById('form');
+const msg = document.getElementById('msg');
+
+form.addEventListener('submit', async e => {
+  e.preventDefault();
+  clearSay(msg);
+  const password = form.password.value;
+  if (password.length < 8) { say(msg, 'Use at least 8 characters.'); return; }
+  if (password !== form.confirm.value) { say(msg, 'Those two passwords do not match.'); return; }
+
+  submitting(form, true, 'Checking…');
+  try {
+    await api('/api/auth/recover', {
+      email: form.email.value.trim(),
+      code: form.code.value,
+      password,
+      confirm: form.confirm.value
+    });
+    say(msg, 'Password changed. Sending you to the login page…', 'good');
+    setTimeout(() => { location.href = '/login'; }, 1400);
+  } catch (err) {
+    say(msg, err.message);
+    submitting(form, false);
+  }
+});
+</script>
+</body>
+</html>
