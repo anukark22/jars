@@ -13,3 +13,10 @@ Desktop.ini
 .claude/settings.local.json
 
 .vercel
+
+# Node / Vercel
+node_modules/
+.env
+.env.local
+.env*.local
+.vercel

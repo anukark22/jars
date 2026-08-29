@@ -1,16 +1,7 @@
-/* ---------------------------------------------------------------------------
-   Local accounts for jars.
+/* Shared behaviour for the login, signup and password pages.
 
-   PROTOTYPE ONLY. Everything here lives in this browser's localStorage:
-   accounts, passwords and jars alike. Passwords are stored as plain text,
-   because there is nothing to check them against but the same browser that
-   holds them — anyone who can open this device's storage can read them, and
-   anyone who can reach the app can reset a password without proving anything.
-
-   This is a convenience for keeping two people's jars apart on a shared
-   laptop. It is not authentication, it protects nothing, and no sensitive
-   information belongs in it.
-   ------------------------------------------------------------------------- */
+   Accounts live in the database now. The browser holds only a session cookie,
+   which it cannot read: no email, no id, and never a password. */
 
 (function () {
   try {
@@ -20,146 +11,95 @@
   } catch (e) { document.documentElement.setAttribute('data-theme', 'light'); }
 })();
 
-const USERS_KEY = 'users';
-const CURRENT_KEY = 'currentUser';
-const MIN_PASSWORD = 8;
-
-/* Storage can be blocked outright (file:// in some browsers, private windows).
-   Never let that throw — the pages still render, they just can't remember. */
-function rawGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
-function rawSet(k, v) { try { localStorage.setItem(k, v); return true; } catch (e) { return false; } }
-function rawDel(k) { try { localStorage.removeItem(k); } catch (e) {} }
-
-function storageWorks() {
-  try { localStorage.setItem('__t', '1'); localStorage.removeItem('__t'); return true; }
-  catch (e) { return false; }
-}
-
-/* ---------- the account list ---------- */
-function getUsers() {
-  const raw = rawGet(USERS_KEY);
-  if (!raw) return [];
-  // A corrupt list is never silently replaced: better to show no accounts than
-  // to overwrite whatever is really in there.
-  try { const list = JSON.parse(raw); return Array.isArray(list) ? list : []; }
-  catch (e) { return []; }
-}
-function setUsers(list) { return rawSet(USERS_KEY, JSON.stringify(list)); }
-
-const normaliseEmail = v => String(v || '').trim().toLowerCase();
-const findByEmail = email => getUsers().find(u => normaliseEmail(u.email) === normaliseEmail(email)) || null;
-const findById = id => getUsers().find(u => u.id === id) || null;
-
-function newId() {
-  return 'u_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
-}
-
-/* ---------- session ----------
-   Only the id is kept. Nothing about the jars themselves. */
-function currentUser() {
-  const id = rawGet(CURRENT_KEY);
-  return id ? findById(id) : null;
-}
-function setCurrentUser(id) { rawSet(CURRENT_KEY, id); }
-function logOut() { rawDel(CURRENT_KEY); location.href = 'login.html'; }
-
-/* ---------- validation ---------- */
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-const isEmail = v => EMAIL_RE.test(v) && v.length <= 254;
-function passwordProblem(pw) {
-  if (typeof pw !== 'string' || pw.length < MIN_PASSWORD) return `Use at least ${MIN_PASSWORD} characters.`;
-  if (pw.length > 200) return 'That password is too long.';
-  return null;
-}
-
-/* ---------- the jars this browser saved before accounts existed ----------
-   Copied into the first account made, never deleted: if anything goes wrong
-   the original keys are still sitting there untouched. */
-const LEGACY_KEYS = ['dreamreel_goals', 'dreamreel_wallet', 'dreamreel_savings',
-                     'dreamreel_funding_log', 'dreamreel_savings_goal', 'dreamreel_wallet_v2'];
-const LEGACY_CLAIMED = 'dreamreel_legacy_claimed';
-
-function legacyData() {
-  if (rawGet(LEGACY_CLAIMED)) return null;      // already given to an account
-  const found = {};
-  let has = false;
-  LEGACY_KEYS.forEach(k => {
-    const v = rawGet(k);
-    if (v !== null) { found[k] = v; if (k !== 'dreamreel_wallet_v2') has = true; }
+async function api(path, body, method) {
+  const res = await fetch(path, {
+    method: method || (body ? 'POST' : 'GET'),
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
+    body: body ? JSON.stringify(body) : undefined
   });
-  return has ? found : null;
+  let data = null;
+  try { data = await res.json(); } catch (e) {}
+  if (data === null) throw new Error('The server could not be reached. Please try again.');
+  if (!res.ok) throw new Error(data.error || 'Something went wrong.');
+  return data;
 }
 
-function describeLegacy(data) {
-  const count = k => { try { return JSON.parse(data[k] || '[]').length; } catch (e) { return 0; } };
+const auth = (action, body) => api('/api/auth?action=' + action, Object.assign({ action }, body || {}));
+
+async function whoAmI() {
+  try { return await api('/api/auth'); }
+  catch (e) { return { authenticated: false }; }
+}
+
+/* Sends anyone already signed in straight to the planner. */
+async function redirectIfLoggedIn() {
+  const me = await whoAmI();
+  if (me.authenticated) { location.replace('index.html'); return true; }
+  return false;
+}
+
+/* ---------- what this browser saved before there were accounts ----------
+   Offered once, and only into an account holding nothing, so it can never
+   overwrite anything. Nothing local is deleted until the server has it. */
+const LOCAL_KEYS = {
+  jars: 'dreamreel_goals',
+  wallet: 'dreamreel_wallet',
+  savings: 'dreamreel_savings',
+  funding: 'dreamreel_funding_log',
+  savingsGoal: 'dreamreel_savings_goal'
+};
+
+function readLocalData() {
+  const read = (k, fallback) => {
+    try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : fallback; }
+    catch (e) { return fallback; }
+  };
+  const out = {
+    jars: read(LOCAL_KEYS.jars, []),
+    wallet: read(LOCAL_KEYS.wallet, []),
+    savings: read(LOCAL_KEYS.savings, []),
+    funding: read(LOCAL_KEYS.funding, [])
+  };
+  let goal;
+  try { goal = Number(localStorage.getItem(LOCAL_KEYS.savingsGoal)); } catch (e) {}
+  if (goal) out.savingsGoal = goal;
+  const count = out.jars.length + out.wallet.length + out.savings.length;
+  return count ? out : null;
+}
+
+function forgetLocalData() {
+  Object.values(LOCAL_KEYS).forEach(k => { try { localStorage.removeItem(k); } catch (e) {} });
+  try { localStorage.removeItem('dreamreel_wallet_v2'); } catch (e) {}
+  try { localStorage.removeItem('users'); localStorage.removeItem('currentUser'); } catch (e) {}
+}
+
+function describeLocal(local) {
   const bits = [];
   const n = (c, one, many) => c + ' ' + (c === 1 ? one : many);
-  if (count('dreamreel_goals')) bits.push(n(count('dreamreel_goals'), 'jar', 'jars'));
-  if (count('dreamreel_wallet')) bits.push(n(count('dreamreel_wallet'), 'wallet entry', 'wallet entries'));
-  if (count('dreamreel_savings')) bits.push(n(count('dreamreel_savings'), 'savings entry', 'savings entries'));
+  if (local.jars.length) bits.push(n(local.jars.length, 'jar', 'jars'));
+  if (local.wallet.length) bits.push(n(local.wallet.length, 'wallet entry', 'wallet entries'));
+  if (local.savings.length) bits.push(n(local.savings.length, 'savings entry', 'savings entries'));
   return bits;
 }
 
-/* ---------- the flows ---------- */
-function signUp(email, password, confirm) {
-  email = normaliseEmail(email);
-  if (!isEmail(email)) return { error: 'That email address does not look right.' };
-  const pw = passwordProblem(password);
-  if (pw) return { error: pw };
-  if (password !== confirm) return { error: 'Those two passwords do not match.' };
-  if (findByEmail(email)) return { error: 'There is already an account with that email. Try logging in.' };
-  if (!storageWorks()) return { error: 'This browser is blocking storage, so an account cannot be saved here.' };
-
-  const user = { id: newId(), email, password, createdAt: Date.now(), data: {} };
-
-  // The first account adopts whatever this browser saved before logins existed.
-  const legacy = legacyData();
-  if (legacy) {
-    Object.keys(legacy).forEach(k => { user.data[k] = legacy[k]; });
-    rawSet(LEGACY_CLAIMED, user.id);
+async function offerImport(hasData) {
+  const local = readLocalData();
+  if (!local || hasData) return;
+  const bits = describeLocal(local);
+  const wants = confirm(
+    'This browser still has jars saved from before your account existed:\n\n  • ' +
+    bits.join('\n  • ') +
+    '\n\nMove them into your account? They will then follow you to any device.\n' +
+    'Your account is empty, so nothing will be overwritten.'
+  );
+  if (!wants) return;
+  try {
+    await api('/api/data', local);
+    forgetLocalData();
+  } catch (e) {
+    alert('That could not be moved across: ' + e.message + '\n\nNothing was changed, and it is still saved in this browser.');
   }
-
-  const users = getUsers();
-  users.push(user);
-  if (!setUsers(users)) return { error: 'That account could not be saved.' };
-  setCurrentUser(user.id);
-  return { user, adopted: legacy ? describeLegacy(legacy) : null };
-}
-
-function logIn(email, password) {
-  const user = findByEmail(email);
-  // One answer for both, so this doesn't become a way to find out who has an account.
-  if (!user || user.password !== password) return { error: 'Invalid email or password.' };
-  setCurrentUser(user.id);
-  return { user };
-}
-
-/* No email, no token, no proof of anything: knowing the address is enough.
-   That is the honest shape of a reset with nothing to send a message with. */
-function resetPassword(email, password, confirm) {
-  const user = findByEmail(email);
-  if (!user) return { error: 'No account here uses that email.' };
-  const pw = passwordProblem(password);
-  if (pw) return { error: pw };
-  if (password !== confirm) return { error: 'Those two passwords do not match.' };
-
-  const users = getUsers();
-  const i = users.findIndex(u => u.id === user.id);
-  users[i].password = password;
-  if (!setUsers(users)) return { error: 'That change could not be saved.' };
-  return { user: users[i] };
-}
-
-/* ---------- page guards ---------- */
-function requireAuth() {
-  if (currentUser()) return true;
-  rawDel(CURRENT_KEY);                   // a stale id pointing at a deleted account
-  location.replace('login.html');
-  return false;
-}
-function redirectIfLoggedIn() {
-  if (currentUser()) { location.replace('index.html'); return true; }
-  return false;
 }
 
 /* ---------- shared bits of the pages ---------- */
@@ -181,6 +121,15 @@ function say(el, text, kind) {
   el.hidden = false;
 }
 function clearSay(el) { el.hidden = true; }
+
+/* Disables the form while a request is in flight, so it cannot be sent twice. */
+function submitting(form, on, label) {
+  const btn = form.querySelector('button[type="submit"]');
+  form.querySelectorAll('input, button').forEach(el => { el.disabled = on; });
+  if (!btn) return;
+  if (on) { btn.dataset.was = btn.textContent; btn.textContent = label || 'Working…'; }
+  else if (btn.dataset.was) { btn.textContent = btn.dataset.was; }
+}
 
 /* A password you can't read is a password you can't check against the one
    above it, so every box gets a show/hide button. */

@@ -31,7 +31,7 @@
     <a href="forgot-password.html">Forgot password?</a>
     <a href="signup.html">Create an account</a>
   </div>
-  <p class="foot">Accounts are saved in this browser only. They are not a secure login and do not sync to other devices.</p>
+  <p class="foot">Your jars are saved to your account, so they follow you to any device you log in from.</p>
 </main>
 
 <script src="auth.js"></script>
@@ -43,12 +43,15 @@
   const form = document.getElementById('form');
   const msg = document.getElementById('msg');
 
-  form.addEventListener('submit', e => {
+  form.addEventListener('submit', async e => {
     e.preventDefault();
     clearSay(msg);
-    const out = logIn(form.email.value, form.password.value);
-    if (out.error) { say(msg, out.error); return; }
-    location.href = 'index.html';
+    submitting(form, true, 'Logging in…');
+    try {
+      const out = await auth('login', { email: form.email.value, password: form.password.value });
+      await offerImport(out.hasData);
+      location.href = 'index.html';
+    } catch (err) { say(msg, err.message); submitting(form, false); }
   });
 </script>
 </body>

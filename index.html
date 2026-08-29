@@ -19,10 +19,6 @@
     } catch (e) { document.documentElement.setAttribute('data-theme', 'light'); }
   })();
 </script>
-<!-- Accounts. Loaded here so the check happens before anything is painted:
-     without a signed-in user this page never renders at all. -->
-<script src="auth.js"></script>
-<script>requireAuth();</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500;1,600&family=Playfair+Display:ital,wght@0,400;0,500;1,400;1,500;1,600&family=Montserrat:wght@400;500;600&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
@@ -959,75 +955,56 @@
 
   function rid() { return 'g_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36); }
 
-  /* Everything the planner saves goes into the signed-in account's own bucket
-     rather than a shared key, so two people on one browser never see each
-     other's jars. The load and save functions below are unchanged — only where
-     they read and write has moved.
-
-     Storage can be blocked entirely (file:// in some browsers) — never let that
-     break the app. */
-  function safeGet(k) {
-    if (k === THEME_KEY) return rawGet(k);   // how the screen looks is the device's, not the account's
-    const u = currentUser();
-    if (!u || !u.data) return null;
-    return k in u.data ? u.data[k] : null;
-  }
-  function safeSet(k, v) {
-    if (k === THEME_KEY) { rawSet(k, v); return; }
-    const u = currentUser();
-    if (!u) return;                          // signed out mid-session: drop it rather than leak it
-    const users = getUsers();
-    const i = users.findIndex(x => x.id === u.id);
-    if (i < 0) return;
-    if (!users[i].data) users[i].data = {};
-    users[i].data[k] = v;
-    setUsers(users);
+  /* ---------- talking to the server ----------
+     The account is taken from the session cookie, so nothing here sends an
+     identity. Writes are collected and sent a moment later, because the app
+     calls save after every small edit. */
+  async function request(body, method) {
+    const res = await fetch('/api/data', {
+      method: method || (body ? 'PUT' : 'GET'),
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: body ? JSON.stringify(body) : undefined
+    });
+    if (res.status === 401) { location.href = 'login.html'; throw new Error('Signed out.'); }
+    let data = null;
+    try { data = await res.json(); } catch (e) {}
+    if (!res.ok) throw new Error((data && data.error) || 'Could not reach the server.');
+    return data;
   }
 
-  function loadGoals() {
-    const raw = safeGet(STORAGE_KEY);
-    if (raw) {
-      // Never discard saved jars. If the stored value is somehow unreadable,
-      // leave it untouched rather than replacing it with anything.
-      try { return JSON.parse(raw); } catch (e) { return []; }
-    }
-    return []; // a fresh planner starts empty — no demo jars appear on their own
+  const pendingSaves = new Map();
+  function queueSave(key, payload) {
+    pendingSaves.set(key, payload);
+    clearTimeout(queueSave.timer);
+    queueSave.timer = setTimeout(flushSaves, 400);
   }
-  function saveGoals(g) { safeSet(STORAGE_KEY, JSON.stringify(g)); }
-  function loadFundingLog() {
-    const raw = safeGet(FUNDING_KEY);
-    if (raw) { try { return JSON.parse(raw); } catch (e) {} }
-    return [];
+  async function flushSaves() {
+    if (!pendingSaves.size) return;
+    // Several edits in a row become one request rather than a queue of them.
+    const merged = Object.assign({}, ...pendingSaves.values());
+    pendingSaves.clear();
+    try { await request(merged); }
+    catch (err) { toast(err.message || 'Could not save. Check your connection.'); }
   }
-  function saveFundingLog() { safeSet(FUNDING_KEY, JSON.stringify(fundingLog)); }
-  function loadWallet() {
-    const raw = safeGet(WALLET_KEY);
-    let list = [];
-    if (raw) { try { list = JSON.parse(raw); } catch (e) { list = []; } }
-    // One-time cleanup: money moved into a jar used to be written here as its own
-    // entry. It is now derived from what each jar holds, so drop the old ones or
-    // they would be counted twice.
-    if (!safeGet(WALLET_MIGRATED_KEY)) {
-      list = list.filter(e => !/^(Toward|Returned from) /.test(e.note || ''));
-      safeSet(WALLET_KEY, JSON.stringify(list));
-      safeSet(WALLET_MIGRATED_KEY, '1');
-    }
-    return list;
-  }
-  function saveWallet() { safeSet(WALLET_KEY, JSON.stringify(walletLog)); }
+  // Don't let a queued edit disappear if the tab is closed straight after it.
+  addEventListener('beforeunload', () => { if (pendingSaves.size) flushSaves(); });
 
-  function loadSavings() {
-    const raw = safeGet(SAVINGS_KEY);
-    if (raw) { try { return JSON.parse(raw); } catch (e) {} }
-    return [];
-  }
-  function saveSavings() { safeSet(SAVINGS_KEY, JSON.stringify(savingsLog)); }
+  function saveGoals() { queueSave('jars', { jars: goals }); }
+  function saveWallet() { queueSave('wallet', { wallet: walletLog }); }
+  function saveSavings() { queueSave('savings', { savings: savingsLog }); }
+  function saveFundingLog() { queueSave('funding', { funding: fundingLog }); }
+  function saveSavingsGoal() { queueSave('prefs', { savingsGoal: savingsGoal }); }
 
-  let goals = loadGoals();
-  let fundingLog = loadFundingLog();
-  let walletLog = loadWallet();
-  let savingsLog = loadSavings();
-  let savingsGoal = Number(safeGet(SAVINGS_GOAL_KEY)) || 20000;
+  // The theme is how the screen looks on this device, not part of the account.
+  function safeGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function safeSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+
+  let goals = [];
+  let fundingLog = [];
+  let walletLog = [];
+  let savingsLog = [];
+  let savingsGoal = 20000;
   let activePage = 'home';
   let pendingPhoto = '';
 
@@ -1108,12 +1085,16 @@
   });
 
   /* ---------- log out ---------- */
-  const meNow = currentUser();
+  let signedInAs = '';
   const logoutBtn = document.getElementById('logoutBtn');
-  logoutBtn.title = meNow ? 'Log out of ' + meNow.email : 'Log out';
-  logoutBtn.addEventListener('click', () => {
-    // The jars stay saved against the account; only the session goes.
-    if (confirm('Log out?' + (meNow ? '\n\nYour jars stay saved to ' + meNow.email + '.' : ''))) logOut();
+  logoutBtn.addEventListener('click', async () => {
+    // The jars stay in the database against the account; only the session goes.
+    if (!confirm('Log out?' + (signedInAs ? '\n\nYour jars stay saved to ' + signedInAs + '.' : ''))) return;
+    await flushSaves();                       // don't strand an edit made a moment ago
+    try {
+      await fetch('/api/auth?action=logout', { method: 'POST', credentials: 'same-origin' });
+    } catch (e) { /* leaving anyway */ }
+    location.href = 'login.html';
   });
 
   let toastTimer = null;
@@ -1652,7 +1633,7 @@
       if (done) return; done = true;
       const v = parseFloat(input.value);
       savingsGoal = (!isNaN(v) && v >= 0) ? v : cur;
-      safeSet(SAVINGS_GOAL_KEY, String(savingsGoal));
+      saveSavingsGoal();
       el.innerHTML = ''; // drop the field first, or renderSavings leaves it in place
       renderSavings();
       toast(`Target set to ${formatMoney(savingsGoal)}`);
@@ -2132,7 +2113,27 @@
     closeModal(); refreshActivePage();
   });
 
-  renderHome();
+  /* ---------- start ----------
+     Nothing is drawn until this account's own jars have arrived, so one
+     person's data can never flash up for another. */
+  (async function start() {
+    try {
+      const who = await (await fetch('/api/auth', { credentials: 'same-origin' })).json();
+      if (!who.authenticated) { location.replace('login.html'); return; }
+      signedInAs = who.user.email;
+      logoutBtn.title = 'Log out of ' + signedInAs;
+
+      const state = await request();
+      goals = state.jars || [];
+      walletLog = state.wallet || [];
+      savingsLog = state.savings || [];
+      fundingLog = state.funding || [];
+      savingsGoal = Number(state.savingsGoal) || 20000;
+      renderHome();
+    } catch (err) {
+      toast('Could not load your jars. Please refresh.');
+    }
+  })();
 </script>
 </body>
 </html>

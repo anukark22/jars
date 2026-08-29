@@ -1,0 +1,15 @@
+{
+  "name": "jars",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "description": "A soft, romantic savings planner",
+  "scripts": {
+    "dev": "vercel dev"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^0.10.4",
+    "bcryptjs": "^2.4.3",
+    "resend": "^4.0.1"
+  }
+}
