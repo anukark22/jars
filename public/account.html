@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Account — jars</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Playfair+Display:ital,wght@0,500;1,500;1,600&family=Montserrat:wght@400;500;600&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/auth.css">
+<style>
+  body { align-items: flex-start; padding-top: 46px; padding-bottom: 46px; }
+  .card { max-width: 460px; }
+  .who { background: var(--cream); border: 1px solid var(--line-soft); border-radius: 3px; padding: 16px; margin-bottom: 26px; }
+  .who .label { margin-bottom: 4px; }
+  .who .addr { font-family: var(--font-display); font-size: 1.25rem; word-break: break-all; }
+  .sect { border-top: 1px solid var(--line-soft); padding-top: 24px; margin-top: 26px; text-align: left; }
+  .sect h2 { font-family: var(--font-display); font-size: 1.3rem; font-weight: 500; margin: 0 0 4px; text-align: center; }
+  .sect p.note { font-family: var(--font-display); font-style: italic; color: var(--plum-dim); margin: 0 0 18px; text-align: center; font-size: 1rem; }
+  .danger h2 { color: var(--danger); }
+  .row { display: flex; gap: 10px; }
+  .row .btn { flex: 1; }
+</style>
+</head>
+<body>
+<main class="card">
+  <div id="mark"></div>
+  <p class="label">Your account</p>
+  <h1>Settings</h1>
+
+  <div class="who">
+    <p class="label">Signed in as</p>
+    <p class="addr" id="who">…</p>
+  </div>
+
+  <div class="row">
+    <a class="btn btn-ghost" href="/" style="text-decoration:none;text-align:center">Back to jars</a>
+    <button class="btn btn-ghost" id="logout">Log out</button>
+  </div>
+
+  <section class="sect">
+    <h2>Change password</h2>
+    <p class="note">Other devices will be signed out.</p>
+    <form id="pwForm" novalidate>
+      <div class="field">
+        <label for="current">Current password</label>
+        <input type="password" id="current" autocomplete="current-password" required>
+      </div>
+      <div class="field">
+        <label for="password">New password</label>
+        <input type="password" id="password" autocomplete="new-password" required minlength="8" placeholder="At least 8 characters">
+      </div>
+      <div class="field">
+        <label for="confirm">Confirm new password</label>
+        <input type="password" id="confirm" autocomplete="new-password" required>
+      </div>
+      <button type="submit" class="btn btn-primary">Change password</button>
+    </form>
+    <p class="msg" id="pwMsg" hidden></p>
+  </section>
+
+  <section class="sect danger">
+    <h2>Delete account</h2>
+    <p class="note">Removes your account and every jar in it. This cannot be undone.</p>
+    <form id="delForm" novalidate>
+      <div class="field">
+        <label for="delPass">Confirm with your password</label>
+        <input type="password" id="delPass" autocomplete="current-password" required>
+      </div>
+      <button type="submit" class="btn btn-danger">Delete my account</button>
+    </form>
+    <p class="msg" id="delMsg" hidden></p>
+  </section>
+</main>
+
+<script type="module">
+import { JAR_SVG, api, say, clearSay, submitting, forgetLocalData } from '/auth.js';
+document.getElementById('mark').innerHTML = JAR_SVG;
+
+const me = await api('/api/auth/me');
+if (!me.authenticated) location.href = '/login?next=' + encodeURIComponent('/account');
+document.getElementById('who').textContent = me.user.email;
+
+document.getElementById('logout').addEventListener('click', async () => {
+  await api('/api/auth/logout', {});
+  location.href = '/login';
+});
+
+const pwForm = document.getElementById('pwForm');
+const pwMsg = document.getElementById('pwMsg');
+pwForm.addEventListener('submit', async e => {
+  e.preventDefault();
+  clearSay(pwMsg);
+  const current = pwForm.current.value;
+  const password = pwForm.password.value;
+  const confirm = pwForm.confirm.value;
+  if (password.length < 8) { say(pwMsg, 'Use at least 8 characters.'); return; }
+  if (password !== confirm) { say(pwMsg, 'Those two passwords do not match.'); return; }
+
+  submitting(pwForm, true, 'Saving…');
+  try {
+    await api('/api/auth/change-password', { current, password, confirm });
+    pwForm.reset();
+    say(pwMsg, 'Password changed. Other devices have been signed out.', 'good');
+  } catch (err) { say(pwMsg, err.message); }
+  finally { submitting(pwForm, false); }
+});
+
+const delForm = document.getElementById('delForm');
+const delMsg = document.getElementById('delMsg');
+delForm.addEventListener('submit', async e => {
+  e.preventDefault();
+  clearSay(delMsg);
+  if (!confirm('Delete your account and every jar in it? This cannot be undone.')) return;
+
+  submitting(delForm, true, 'Deleting…');
+  try {
+    await api('/api/auth/delete-account', { password: delForm.delPass.value });
+    forgetLocalData();
+    alert('Your account has been deleted.');
+    location.href = '/login';
+  } catch (err) { say(delMsg, err.message); submitting(delForm, false); }
+});
+</script>
+</body>
+</html>

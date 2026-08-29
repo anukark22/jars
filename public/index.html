@@ -186,6 +186,7 @@
     transition: background 0.25s ease, color 0.25s ease, border-color 0.25s ease;
   }
   .theme-toggle:hover { background: var(--blush); border-color: var(--rose); }
+  .acct-link { text-decoration: none; }
 
   .btn-add {
     font-family: var(--font-label); text-transform: uppercase; letter-spacing: 0.14em; font-size: 0.6rem; font-weight: 500;
@@ -654,6 +655,7 @@
     <button class="navlink" data-page="calendar">Calendar</button>
   </div>
   <div class="nav-right">
+    <a class="theme-toggle acct-link" href="/account" title="Account" aria-label="Account"><span id="whoami" hidden></span>◍</a>
     <button class="theme-toggle" id="themeToggle" title="Switch theme" aria-label="Switch theme">☾</button>
     <button class="btn-add" id="openAddModal">+ Add a Dream</button>
   </div>
@@ -944,64 +946,59 @@
 
 <script>
   const USER_NAME = 'Anuka';
-  const STORAGE_KEY = 'dreamreel_goals';
-  const FUNDING_KEY = 'dreamreel_funding_log';
-  const WALLET_KEY = 'dreamreel_wallet';
-  const THEME_KEY = 'dreamreel_theme';
-  const WALLET_MIGRATED_KEY = 'dreamreel_wallet_v2';
-  const SAVINGS_KEY = 'dreamreel_savings';
-  const SAVINGS_GOAL_KEY = 'dreamreel_savings_goal';
+  const THEME_KEY = 'dreamreel_theme';   // a display preference, stays on the device
 
   function rid() { return 'g_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36); }
 
-  // Storage can be blocked entirely (file:// in some browsers) — never let that break the app.
+  // Only the theme lives in localStorage now. Jars, wallet and savings belong
+  // to the signed-in account and are kept on the server.
   function safeGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
   function safeSet(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* in-memory only */ } }
 
-  function loadGoals() {
-    const raw = safeGet(STORAGE_KEY);
-    if (raw) {
-      // Never discard saved jars. If the stored value is somehow unreadable,
-      // leave it untouched rather than replacing it with anything.
-      try { return JSON.parse(raw); } catch (e) { return []; }
-    }
-    return []; // a fresh planner starts empty — no demo jars appear on their own
+  /* ---------- talking to the server ----------
+     The account is taken from the session cookie, so nothing here sends an
+     identity. Writes are collected and sent a moment later, because the app
+     calls save after every small edit. */
+  async function request(path, body, method) {
+    const res = await fetch(path, {
+      method: method || (body ? 'PUT' : 'GET'),
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: body ? JSON.stringify(body) : undefined
+    });
+    if (res.status === 401) { location.href = '/login'; throw new Error('Signed out.'); }
+    let data = null;
+    try { data = await res.json(); } catch (e) {}
+    if (!res.ok) throw new Error((data && data.error) || 'Could not reach the server.');
+    return data;
   }
-  function saveGoals(g) { safeSet(STORAGE_KEY, JSON.stringify(g)); }
-  function loadFundingLog() {
-    const raw = safeGet(FUNDING_KEY);
-    if (raw) { try { return JSON.parse(raw); } catch (e) {} }
-    return [];
-  }
-  function saveFundingLog() { safeSet(FUNDING_KEY, JSON.stringify(fundingLog)); }
-  function loadWallet() {
-    const raw = safeGet(WALLET_KEY);
-    let list = [];
-    if (raw) { try { list = JSON.parse(raw); } catch (e) { list = []; } }
-    // One-time cleanup: money moved into a jar used to be written here as its own
-    // entry. It is now derived from what each jar holds, so drop the old ones or
-    // they would be counted twice.
-    if (!safeGet(WALLET_MIGRATED_KEY)) {
-      list = list.filter(e => !/^(Toward|Returned from) /.test(e.note || ''));
-      safeSet(WALLET_KEY, JSON.stringify(list));
-      safeSet(WALLET_MIGRATED_KEY, '1');
-    }
-    return list;
-  }
-  function saveWallet() { safeSet(WALLET_KEY, JSON.stringify(walletLog)); }
 
-  function loadSavings() {
-    const raw = safeGet(SAVINGS_KEY);
-    if (raw) { try { return JSON.parse(raw); } catch (e) {} }
-    return [];
+  const pendingSaves = new Map();
+  function queueSave(key, send) {
+    pendingSaves.set(key, send);
+    clearTimeout(queueSave.timer);
+    queueSave.timer = setTimeout(flushSaves, 400);
   }
-  function saveSavings() { safeSet(SAVINGS_KEY, JSON.stringify(savingsLog)); }
+  async function flushSaves() {
+    const jobs = [...pendingSaves.values()];
+    pendingSaves.clear();
+    try { await Promise.all(jobs.map(fn => fn())); }
+    catch (err) { toast(err.message || 'Could not save. Check your connection.'); }
+  }
+  // Don't let a queued edit disappear if the tab is closed straight after it.
+  addEventListener('beforeunload', () => { if (pendingSaves.size) flushSaves(); });
 
-  let goals = loadGoals();
-  let fundingLog = loadFundingLog();
-  let walletLog = loadWallet();
-  let savingsLog = loadSavings();
-  let savingsGoal = Number(safeGet(SAVINGS_GOAL_KEY)) || 20000;
+  function saveGoals() { queueSave('jars', () => request('/api/jars', { jars: goals })); }
+  function saveWallet() { queueSave('wallet', () => request('/api/wallet', { entries: walletLog })); }
+  function saveSavings() { queueSave('savings', () => request('/api/savings', { entries: savingsLog })); }
+  function saveFundingLog() { queueSave('funding', () => request('/api/funding', { entries: fundingLog })); }
+  function saveSavingsGoal() { queueSave('prefs', () => request('/api/prefs', { savingsGoal })); }
+
+  let goals = [];
+  let fundingLog = [];
+  let walletLog = [];
+  let savingsLog = [];
+  let savingsGoal = 20000;
   let activePage = 'home';
   let pendingPhoto = '';
 
@@ -1617,7 +1614,7 @@
       if (done) return; done = true;
       const v = parseFloat(input.value);
       savingsGoal = (!isNaN(v) && v >= 0) ? v : cur;
-      safeSet(SAVINGS_GOAL_KEY, String(savingsGoal));
+      saveSavingsGoal();
       el.innerHTML = ''; // drop the field first, or renderSavings leaves it in place
       renderSavings();
       toast(`Target set to ${formatMoney(savingsGoal)}`);
@@ -2097,7 +2094,26 @@
     closeModal(); refreshActivePage();
   });
 
-  renderHome();
+  /* ---------- start ----------
+     Nothing is drawn until this account's own data has arrived, so one user's
+     jars can never flash up for another. */
+  (async function start() {
+    try {
+      const me = await request('/api/auth/me');
+      if (!me.authenticated) { location.href = '/login'; return; }
+      document.getElementById('whoami').textContent = me.user.email;
+
+      const state = await request('/api/state');
+      goals = state.jars || [];
+      walletLog = state.wallet || [];
+      savingsLog = state.savings || [];
+      fundingLog = state.funding || [];
+      savingsGoal = Number(state.savingsGoal) || 20000;
+    } catch (err) {
+      toast('Could not load your jars. Please refresh.');
+    }
+    renderHome();
+  })();
 </script>
 </body>
 </html>

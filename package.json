@@ -1,0 +1,22 @@
+{
+  "name": "jars",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "A soft, romantic savings planner",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js"
+  },
+  "engines": {
+    "node": ">=22.5"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cookie-parser": "^1.4.7",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "nodemailer": "^9.0.6"
+  }
+}
