@@ -2235,9 +2235,18 @@
     } catch (e) {
       throw new Error('Could not reach the server. Are you online?');
     }
-    let data = {};
+    let data = null;
     try { data = await r.json(); } catch (e) {}
-    if (!r.ok) throw new Error(data.error || 'Something went wrong.');
+
+    // A non-JSON reply means the route isn't there at all — typically the app
+    // opened as a local file or from a plain static server, where /api has
+    // nothing behind it. Say so, rather than blaming the credentials.
+    // The real routes always answer with JSON, so anything else means nothing
+    // is serving /api here — usually a local copy or a plain static server.
+    if (data === null) {
+      throw new Error(`No login service at this address (${r.status}). Open the deployed site rather than a local copy.`);
+    }
+    if (!r.ok) throw new Error(data.error || `Request failed (${r.status}).`);
     return data;
   }
 
