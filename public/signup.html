@@ -9,6 +9,14 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Playfair+Display:ital,wght@0,500;1,500;1,600&family=Montserrat:wght@400;500;600&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/auth.css">
+<style>
+  .carry {
+    background: var(--blush); border: 1px solid var(--line); border-radius: 3px;
+    padding: 12px 14px; margin: 0 0 20px; font-family: var(--font-body);
+    font-size: .82rem; line-height: 1.55; color: var(--plum); text-align: left;
+  }
+  .carry b { font-weight: 500; color: var(--rose-deep); }
+</style>
 </head>
 <body>
 <main class="card">
@@ -16,6 +24,7 @@
   <p class="label">First time here</p>
   <h1>Start your <em>jars</em></h1>
   <p class="sub">Somewhere to save for the things you actually want.</p>
+  <p class="carry" id="carry" hidden></p>
   <form id="form" novalidate>
     <div class="field">
       <label for="email">Email</label>
@@ -36,9 +45,24 @@
 </main>
 
 <script type="module">
-import { JAR_SVG, api, say, clearSay, submitting, addPasswordReveals, offerImport, goNext } from '/auth.js';
+import { JAR_SVG, api, say, clearSay, submitting, addPasswordReveals, offerImport, readLocalData, goNext } from '/auth.js';
 document.getElementById('mark').innerHTML = JAR_SVG;
 addPasswordReveals();
+
+/* Says up front what's waiting to be carried over, so making an account
+   visibly keeps the work rather than looking like starting again. */
+const waiting = readLocalData();
+if (waiting) {
+  const bits = [];
+  const n = (c, one, many) => `<b>${c}</b> ${c === 1 ? one : many}`;
+  if (waiting.jars.length) bits.push(n(waiting.jars.length, 'jar', 'jars'));
+  if (waiting.wallet.length) bits.push(n(waiting.wallet.length, 'wallet entry', 'wallet entries'));
+  if (waiting.savings.length) bits.push(n(waiting.savings.length, 'savings entry', 'savings entries'));
+  const list = bits.length > 1 ? bits.slice(0, -1).join(', ') + ' and ' + bits[bits.length - 1] : bits[0];
+  const carry = document.getElementById('carry');
+  carry.innerHTML = `This browser is holding ${list} from before accounts existed. Create an account and we’ll offer to move it all across.`;
+  carry.hidden = false;
+}
 
 const form = document.getElementById('form');
 const msg = document.getElementById('msg');

@@ -55,8 +55,28 @@ for you at `data/jars.db`.
 
 `npm start` runs it without file-watching.
 
-If you had jars saved in the browser from before accounts existed, the first
-account you create will offer to bring them across.
+## Data from before accounts existed
+
+Anyone who used the planner before it had logins has jars sitting in their
+browser's storage. They land on the login page, so the app says so there: if
+this browser is holding anything, a dialog opens offering to create an account
+and carry it over, listing exactly what it found. The signup page repeats the
+tally so making an account visibly keeps the work rather than looking like
+starting again.
+
+After signing up or logging in, the import is offered — and only into an
+account with nothing in it, so an existing account is never overwritten.
+Declining leaves the browser's copy untouched; nothing is deleted until it has
+been safely moved.
+
+The dialog appears once per browser session, so it is noticed without nagging
+on every page.
+
+**Note on ports.** Browser storage belongs to one origin. The old static app
+ran on port 8934 and the server runs on 3000, so data saved by the old version
+isn't visible to the new one. To bring it across, run the server once on the
+old port — `PORT=8934 npm start` — and log in there; afterwards the port stops
+mattering, because the data lives in the database.
 
 ## Environment variables
 

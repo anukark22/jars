@@ -34,6 +34,37 @@ export async function api(path, body, method) {
   return data;
 }
 
+/* A styled stand-in for confirm(). Resolves true if the primary button is
+   pressed, false on cancel, Escape, or a click on the backdrop. */
+export function ask({ title, body, tally, confirmLabel, cancelLabel }) {
+  return new Promise(resolve => {
+    const veil = document.createElement('div');
+    veil.className = 'veil';
+    veil.innerHTML = `
+      <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlgTitle">
+        ${JAR_SVG}
+        <h2 id="dlgTitle">${title}</h2>
+        ${body ? `<p>${body}</p>` : ''}
+        ${tally ? `<ul class="tally">${tally.map(t => `<li><span>${t.what}</span><b>${t.count}</b></li>`).join('')}</ul>` : ''}
+        <div class="acts">
+          <button class="btn btn-primary" data-yes>${confirmLabel}</button>
+          ${cancelLabel ? `<button class="btn btn-ghost" data-no>${cancelLabel}</button>` : ''}
+        </div>
+      </div>`;
+
+    const done = answer => { document.removeEventListener('keydown', onKey); veil.remove(); resolve(answer); };
+    const onKey = e => { if (e.key === 'Escape') done(false); };
+
+    veil.querySelector('[data-yes]').addEventListener('click', () => done(true));
+    veil.querySelector('[data-no]')?.addEventListener('click', () => done(false));
+    veil.addEventListener('click', e => { if (e.target === veil) done(false); });
+    document.addEventListener('keydown', onKey);
+
+    document.body.appendChild(veil);
+    veil.querySelector('[data-yes]').focus();
+  });
+}
+
 /* Puts a show/hide button on every password box, because a password you can't
    read is a password you can't check against the one above it. Revealing is
    per-field: showing one doesn't give away the others. */
@@ -119,25 +150,63 @@ export function forgetLocalData() {
   try { localStorage.removeItem('dreamreel_wallet_v2'); } catch (e) {}
 }
 
+function tallyOf(local) {
+  const rows = [];
+  if (local.jars.length) rows.push({ what: 'Jars', count: local.jars.length });
+  if (local.wallet.length) rows.push({ what: 'Wallet entries', count: local.wallet.length });
+  if (local.savings.length) rows.push({ what: 'Savings entries', count: local.savings.length });
+  return { rows };
+}
+
+/* Shown on the login page when this browser is still holding jars from before
+   accounts existed. Without it, someone who used the planner earlier lands on
+   a login form with no sign their work is sitting there unsaved. */
+export async function offerAccountForLocalData() {
+  const local = readLocalData();
+  if (!local) return;
+  // Once per browser session — enough to be noticed, not enough to nag.
+  try {
+    if (sessionStorage.getItem('jars_local_notice')) return;
+    sessionStorage.setItem('jars_local_notice', '1');
+  } catch (e) { /* storage blocked; just show it */ }
+
+  const { rows } = tallyOf(local);
+  const wants = await ask({
+    title: 'Your jars are still <em>here</em>',
+    body: 'This browser is holding work you saved before accounts existed. ' +
+          'It lives on this device only — make an account and it moves with you.',
+    tally: rows,
+    confirmLabel: 'Create an account',
+    cancelLabel: 'I already have one'
+  });
+  if (wants) location.href = '/signup';
+}
+
 /* Called after a successful signup or login. Only offers when this browser has
    something and the account is empty, so nothing is ever silently replaced. */
 export async function offerImport(hasData) {
   const local = readLocalData();
   if (!local || hasData) return;
-  const bits = [];
-  if (local.jars.length) bits.push(`${local.jars.length} jar${local.jars.length === 1 ? '' : 's'}`);
-  if (local.wallet.length) bits.push(`${local.wallet.length} wallet entr${local.wallet.length === 1 ? 'y' : 'ies'}`);
-  if (local.savings.length) bits.push(`${local.savings.length} savings entr${local.savings.length === 1 ? 'y' : 'ies'}`);
-  const wants = confirm(
-    `This browser still has data saved from before you had an account:\n\n  • ${bits.join('\n  • ')}\n\n` +
-    `Move it into your account? Your account is currently empty, so nothing will be overwritten.`
-  );
+
+  const { rows } = tallyOf(local);
+  const wants = await ask({
+    title: 'Bring your jars <em>across</em>?',
+    body: 'Saved on this device from before you had an account. Your account is empty, so nothing will be overwritten.',
+    tally: rows,
+    confirmLabel: 'Move it into my account',
+    cancelLabel: 'Not now'
+  });
   if (!wants) return;
+
   try {
     await api('/api/import', local);
     forgetLocalData();
   } catch (e) {
-    alert('That could not be imported: ' + e.message);
+    await ask({
+      title: 'That didn’t go through',
+      body: e.message + ' Nothing was changed, and your data is still on this device.',
+      confirmLabel: 'OK'
+    });
   }
 }
 
