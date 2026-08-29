@@ -2172,11 +2172,23 @@ if (location.protocol !== 'http:' && location.protocol !== 'https:') {
         'cursor:pointer;background:var(--rose-deep,#9A5D61);color:var(--cream,#F9F1E8);' +
         'font-family:var(--font-label,sans-serif);text-transform:uppercase;letter-spacing:.15em;' +
         'font-size:.6rem">Download my backup</button>' +
+        '<button id="rescueClose" style="width:100%;margin-top:9px;padding:13px 24px;cursor:pointer;' +
+        'border:1px solid var(--line,rgba(191,126,129,.3));border-radius:999px;background:transparent;' +
+        'color:var(--plum-dim,rgba(87,65,68,.66));font-family:var(--font-label,sans-serif);' +
+        'text-transform:uppercase;letter-spacing:.15em;font-size:.6rem">Close</button>' +
         '<p style="font-size:.78rem;color:var(--plum-dim,rgba(87,65,68,.66));margin:14px 0 0">' +
-        'Nothing here is deleted by downloading it. Keep this tab open until the file is saved.</p>' +
+        'Nothing here is deleted, by downloading it or by closing this. Your data stays in this ' +
+        'browser until you move it yourself.</p>' +
       '</div>';
 
+    // Never trap anyone behind it: a button, the backdrop and Escape all close.
+    const shut = () => { document.removeEventListener('keydown', onKey); veil.remove(); };
+    const onKey = e => { if (e.key === 'Escape') shut(); };
+    document.addEventListener('keydown', onKey);
+    veil.addEventListener('click', e => { if (e.target === veil) shut(); });
+
     document.body.appendChild(veil);
+    veil.querySelector('#rescueClose').addEventListener('click', shut);
     veil.querySelector('#rescueGet').addEventListener('click', e => {
       const blob = new Blob([JSON.stringify(found.raw, null, 2)], { type: 'application/json' });
       const a = document.createElement('a');
