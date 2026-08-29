@@ -72,6 +72,13 @@ been safely moved.
 The dialog appears once per browser session, so it is noticed without nagging
 on every page.
 
+**If a copy is served without the API** — an old static deployment still
+sitting on a URL — the planner no longer renders an empty page over the top of
+data that is still there. It detects jars in that browser and offers a
+`jars-backup.json` download, which **Account -> Restore from a backup** takes
+in. The restore refuses an account that already holds data, so it can never
+overwrite anything.
+
 **Note on ports.** Browser storage belongs to one origin. The old static app
 ran on port 8934 and the server runs on 3000, so data saved by the old version
 isn't visible to the new one. To bring it across, run the server once on the

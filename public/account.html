@@ -121,6 +121,19 @@ if (location.protocol !== 'http:' && location.protocol !== 'https:') {
     <p class="msg" id="recMsg" hidden></p>
   </section>
 
+  <section class="sect">
+    <h2>Restore from a backup</h2>
+    <p class="note">A <code>jars-backup.json</code> saved from an older copy of the app.</p>
+    <form id="restoreForm" novalidate>
+      <div class="field">
+        <label for="backupFile">Backup file</label>
+        <input type="file" id="backupFile" accept="application/json,.json" required>
+      </div>
+      <button type="submit" class="btn btn-primary">Restore it</button>
+    </form>
+    <p class="msg" id="restoreMsg" hidden></p>
+  </section>
+
   <section class="sect danger">
     <h2>Delete account</h2>
     <p class="note">Removes your account and every jar in it. This cannot be undone.</p>
@@ -224,6 +237,42 @@ document.getElementById('copyCode').addEventListener('click', async e => {
   }
 });
 document.getElementById('printCode').addEventListener('click', () => window.print());
+
+/* ---------- restore from a backup file ----------
+   Accepts the file the rescue screen downloads: the raw localStorage keys as
+   the old version wrote them. */
+const restoreForm = document.getElementById('restoreForm');
+const restoreMsg = document.getElementById('restoreMsg');
+restoreForm.addEventListener('submit', async e => {
+  e.preventDefault();
+  clearSay(restoreMsg);
+
+  const file = document.getElementById('backupFile').files[0];
+  if (!file) { say(restoreMsg, 'Choose the backup file first.'); return; }
+
+  submitting(restoreForm, true, 'Restoring…');
+  try {
+    const raw = JSON.parse(await file.text());
+    const parse = k => { try { return JSON.parse(raw[k] || '[]'); } catch (err) { return []; } };
+    const payload = {
+      jars: parse('dreamreel_goals'),
+      wallet: parse('dreamreel_wallet'),
+      savings: parse('dreamreel_savings'),
+      funding: parse('dreamreel_funding_log'),
+      savingsGoal: Number(raw.dreamreel_savings_goal) || undefined
+    };
+    const total = payload.jars.length + payload.wallet.length + payload.savings.length;
+    if (!total) { say(restoreMsg, 'There was nothing to restore in that file.'); return; }
+
+    await api('/api/import', payload);
+    say(restoreMsg, `Restored ${payload.jars.length} jar${payload.jars.length === 1 ? '' : 's'}. Opening your planner…`, 'good');
+    setTimeout(() => { location.href = '/'; }, 1400);
+  } catch (err) {
+    // The server refuses an account that already holds data, so this cannot
+    // quietly replace anything.
+    say(restoreMsg, err instanceof SyntaxError ? 'That file isn’t a jars backup.' : err.message);
+  } finally { submitting(restoreForm, false); }
+});
 
 const delForm = document.getElementById('delForm');
 const delMsg = document.getElementById('delMsg');

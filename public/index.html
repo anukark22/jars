@@ -2112,6 +2112,83 @@ if (location.protocol !== 'http:' && location.protocol !== 'https:') {
     closeModal(); refreshActivePage();
   });
 
+  /* ---------- rescue ----------
+     Jars used to live in this browser rather than on a server. A copy of the
+     app served without the API — an old static deployment still sitting on a
+     URL — would otherwise render an empty planner over the top of data that is
+     still perfectly intact underneath. This finds it and gives it back. */
+  const LEGACY_KEYS = ['dreamreel_goals', 'dreamreel_wallet', 'dreamreel_savings',
+                       'dreamreel_funding_log', 'dreamreel_savings_goal'];
+
+  function readLegacy() {
+    const raw = {};
+    let found = false;
+    LEGACY_KEYS.forEach(k => {
+      try {
+        const v = localStorage.getItem(k);
+        if (v !== null) { raw[k] = v; found = true; }
+      } catch (e) { /* storage blocked */ }
+    });
+    if (!found) return null;
+    const parse = k => { try { return JSON.parse(raw[k] || '[]'); } catch (e) { return []; } };
+    const data = { raw, jars: parse('dreamreel_goals'), wallet: parse('dreamreel_wallet'),
+                   savings: parse('dreamreel_savings') };
+    return (data.jars.length || data.wallet.length || data.savings.length) ? data : null;
+  }
+
+  function offerRescue() {
+    const found = readLegacy();
+    if (!found) return false;
+
+    const rows = [
+      ['Jars', found.jars.length],
+      ['Wallet entries', found.wallet.length],
+      ['Savings entries', found.savings.length]
+    ].filter(r => r[1]);
+
+    const veil = document.createElement('div');
+    veil.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;' +
+      'justify-content:center;padding:24px;background:rgba(0,0,0,.55);overflow:auto';
+    veil.innerHTML =
+      '<div style="max-width:460px;width:100%;padding:32px;background:var(--paper,#FFFCF8);' +
+      'border:1px solid var(--line,rgba(191,126,129,.3));border-radius:4px;text-align:center;' +
+      'color:var(--plum,#574144)">' +
+        '<p style="margin:0;font-family:var(--font-label,sans-serif);text-transform:uppercase;' +
+        'letter-spacing:.24em;font-size:.6rem;color:var(--rose-deep,#9A5D61)">Your jars are safe</p>' +
+        '<h2 style="font-family:var(--font-display,Georgia,serif);font-size:1.6rem;font-weight:500;' +
+        'margin:10px 0 12px">Found on this <em style="color:var(--rose-deep,#9A5D61)">device</em></h2>' +
+        '<p style="font-size:.88rem;color:var(--plum-dim,rgba(87,65,68,.66));margin:0 0 18px">' +
+        'This copy of jars has no server behind it, so it cannot reach your account — but your ' +
+        'data is still here in this browser, untouched. Download it, then restore it from the ' +
+        'account page of the app running on your computer.</p>' +
+        '<ul style="list-style:none;margin:0 0 20px;padding:14px 18px;text-align:left;' +
+        'background:var(--cream,#F9F1E8);border:1px solid var(--line-soft,rgba(191,126,129,.16));' +
+        'border-radius:3px;font-family:var(--font-display,Georgia,serif);font-size:1.05rem">' +
+          rows.map(r => '<li style="display:flex;justify-content:space-between;gap:14px">' +
+            '<span>' + r[0] + '</span><b style="font-weight:500;color:var(--rose-deep,#9A5D61)">' +
+            r[1] + '</b></li>').join('') +
+        '</ul>' +
+        '<button id="rescueGet" style="width:100%;padding:13px 24px;border:0;border-radius:999px;' +
+        'cursor:pointer;background:var(--rose-deep,#9A5D61);color:var(--cream,#F9F1E8);' +
+        'font-family:var(--font-label,sans-serif);text-transform:uppercase;letter-spacing:.15em;' +
+        'font-size:.6rem">Download my backup</button>' +
+        '<p style="font-size:.78rem;color:var(--plum-dim,rgba(87,65,68,.66));margin:14px 0 0">' +
+        'Nothing here is deleted by downloading it. Keep this tab open until the file is saved.</p>' +
+      '</div>';
+
+    document.body.appendChild(veil);
+    veil.querySelector('#rescueGet').addEventListener('click', e => {
+      const blob = new Blob([JSON.stringify(found.raw, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'jars-backup.json';
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+      e.target.textContent = 'Downloaded ✓';
+    });
+    return true;
+  }
+
   /* ---------- start ----------
      Nothing is drawn until this account's own data has arrived, so one user's
      jars can never flash up for another. */
@@ -2127,10 +2204,13 @@ if (location.protocol !== 'http:' && location.protocol !== 'https:') {
       savingsLog = state.savings || [];
       fundingLog = state.funding || [];
       savingsGoal = Number(state.savingsGoal) || 20000;
+      renderHome();
     } catch (err) {
-      toast('Could not load your jars. Please refresh.');
+      // A copy served without the API — an old static deployment, most likely.
+      // If this browser still holds jars, say so and hand them back rather than
+      // leaving someone staring at an empty planner.
+      if (!offerRescue()) toast('Could not load your jars. Please refresh.');
     }
-    renderHome();
   })();
 </script>
 </body>
