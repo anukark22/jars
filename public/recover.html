@@ -13,6 +13,24 @@
   #code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
           letter-spacing: 0.12em; text-transform: uppercase; }
 </style>
+<script>
+/* Not served over http, so this is the file itself opened from disk (file:,
+   or a data: snapshot of it). Nothing it needs can load, and the result looks
+   broken rather than explaining itself. */
+if (location.protocol !== 'http:' && location.protocol !== 'https:') {
+  document.addEventListener('DOMContentLoaded', function () {
+    document.body.style.cssText = 'margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:#F9F1E8;color:#574144;font:15px/1.7 Georgia,serif';
+    document.body.innerHTML =
+      '<div style="max-width:430px;padding:34px;background:#FFFCF8;border:1px solid rgba(191,126,129,.3);border-radius:4px;text-align:center">' +
+      '<p style="margin:0;font:500 .6rem/1 Arial,sans-serif;letter-spacing:.24em;text-transform:uppercase;color:#9A5D61">Opened from disk</p>' +
+      '<h1 style="font-size:1.8rem;font-weight:500;margin:10px 0 12px">Open jars through the <em style="color:#9A5D61">server</em></h1>' +
+      '<p style="color:rgba(87,65,68,.66);margin:0 0 20px">This file was opened directly, so its styling and your jars can&rsquo;t load. The app has to be served to work.</p>' +
+      '<p style="margin:0 0 18px"><a href="http://localhost:3000" style="display:inline-block;padding:13px 26px;border-radius:999px;background:#9A5D61;color:#F9F1E8;text-decoration:none;font:500 .6rem/1 Arial,sans-serif;letter-spacing:.15em;text-transform:uppercase">Go to localhost:3000</a></p>' +
+      '<p style="margin:0;font-size:.8rem;color:rgba(87,65,68,.66)">Not running? Start it with <code style="background:#F2E6DA;padding:2px 6px;border-radius:3px">npm run dev</code></p>' +
+      '</div>';
+  });
+}
+</script>
 </head>
 <body>
 <main class="card">
