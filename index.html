@@ -186,7 +186,6 @@
     transition: background 0.25s ease, color 0.25s ease, border-color 0.25s ease;
   }
   .theme-toggle:hover { background: var(--blush); border-color: var(--rose); }
-  .acct-link { text-decoration: none; }
 
   .btn-add {
     font-family: var(--font-label); text-transform: uppercase; letter-spacing: 0.14em; font-size: 0.6rem; font-weight: 500;
@@ -611,24 +610,6 @@
     .event-side { grid-column: 2; align-items: flex-start; }
   }
 </style>
-<script>
-/* Not served over http, so this is the file itself opened from disk (file:,
-   or a data: snapshot of it). Nothing it needs can load, and the result looks
-   broken rather than explaining itself. */
-if (location.protocol !== 'http:' && location.protocol !== 'https:') {
-  document.addEventListener('DOMContentLoaded', function () {
-    document.body.style.cssText = 'margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:#F9F1E8;color:#574144;font:15px/1.7 Georgia,serif';
-    document.body.innerHTML =
-      '<div style="max-width:430px;padding:34px;background:#FFFCF8;border:1px solid rgba(191,126,129,.3);border-radius:4px;text-align:center">' +
-      '<p style="margin:0;font:500 .6rem/1 Arial,sans-serif;letter-spacing:.24em;text-transform:uppercase;color:#9A5D61">Opened from disk</p>' +
-      '<h1 style="font-size:1.8rem;font-weight:500;margin:10px 0 12px">Open jars through the <em style="color:#9A5D61">server</em></h1>' +
-      '<p style="color:rgba(87,65,68,.66);margin:0 0 20px">This file was opened directly, so its styling and your jars can&rsquo;t load. The app has to be served to work.</p>' +
-      '<p style="margin:0 0 18px"><a href="http://localhost:3000" style="display:inline-block;padding:13px 26px;border-radius:999px;background:#9A5D61;color:#F9F1E8;text-decoration:none;font:500 .6rem/1 Arial,sans-serif;letter-spacing:.15em;text-transform:uppercase">Go to localhost:3000</a></p>' +
-      '<p style="margin:0;font-size:.8rem;color:rgba(87,65,68,.66)">Not running? Start it with <code style="background:#F2E6DA;padding:2px 6px;border-radius:3px">npm run dev</code></p>' +
-      '</div>';
-  });
-}
-</script>
 </head>
 <body>
 
@@ -673,7 +654,6 @@ if (location.protocol !== 'http:' && location.protocol !== 'https:') {
     <button class="navlink" data-page="calendar">Calendar</button>
   </div>
   <div class="nav-right">
-    <a class="theme-toggle acct-link" href="/account" title="Account" aria-label="Account"><span id="whoami" hidden></span>◍</a>
     <button class="theme-toggle" id="themeToggle" title="Switch theme" aria-label="Switch theme">☾</button>
     <button class="btn-add" id="openAddModal">+ Add a Dream</button>
   </div>
@@ -964,59 +944,64 @@ if (location.protocol !== 'http:' && location.protocol !== 'https:') {
 
 <script>
   const USER_NAME = 'Anuka';
-  const THEME_KEY = 'dreamreel_theme';   // a display preference, stays on the device
+  const STORAGE_KEY = 'dreamreel_goals';
+  const FUNDING_KEY = 'dreamreel_funding_log';
+  const WALLET_KEY = 'dreamreel_wallet';
+  const THEME_KEY = 'dreamreel_theme';
+  const WALLET_MIGRATED_KEY = 'dreamreel_wallet_v2';
+  const SAVINGS_KEY = 'dreamreel_savings';
+  const SAVINGS_GOAL_KEY = 'dreamreel_savings_goal';
 
   function rid() { return 'g_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36); }
 
-  // Only the theme lives in localStorage now. Jars, wallet and savings belong
-  // to the signed-in account and are kept on the server.
+  // Storage can be blocked entirely (file:// in some browsers) — never let that break the app.
   function safeGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
   function safeSet(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* in-memory only */ } }
 
-  /* ---------- talking to the server ----------
-     The account is taken from the session cookie, so nothing here sends an
-     identity. Writes are collected and sent a moment later, because the app
-     calls save after every small edit. */
-  async function request(path, body, method) {
-    const res = await fetch(path, {
-      method: method || (body ? 'PUT' : 'GET'),
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'same-origin',
-      body: body ? JSON.stringify(body) : undefined
-    });
-    if (res.status === 401) { location.href = '/login'; throw new Error('Signed out.'); }
-    let data = null;
-    try { data = await res.json(); } catch (e) {}
-    if (!res.ok) throw new Error((data && data.error) || 'Could not reach the server.');
-    return data;
+  function loadGoals() {
+    const raw = safeGet(STORAGE_KEY);
+    if (raw) {
+      // Never discard saved jars. If the stored value is somehow unreadable,
+      // leave it untouched rather than replacing it with anything.
+      try { return JSON.parse(raw); } catch (e) { return []; }
+    }
+    return []; // a fresh planner starts empty — no demo jars appear on their own
   }
-
-  const pendingSaves = new Map();
-  function queueSave(key, send) {
-    pendingSaves.set(key, send);
-    clearTimeout(queueSave.timer);
-    queueSave.timer = setTimeout(flushSaves, 400);
+  function saveGoals(g) { safeSet(STORAGE_KEY, JSON.stringify(g)); }
+  function loadFundingLog() {
+    const raw = safeGet(FUNDING_KEY);
+    if (raw) { try { return JSON.parse(raw); } catch (e) {} }
+    return [];
   }
-  async function flushSaves() {
-    const jobs = [...pendingSaves.values()];
-    pendingSaves.clear();
-    try { await Promise.all(jobs.map(fn => fn())); }
-    catch (err) { toast(err.message || 'Could not save. Check your connection.'); }
+  function saveFundingLog() { safeSet(FUNDING_KEY, JSON.stringify(fundingLog)); }
+  function loadWallet() {
+    const raw = safeGet(WALLET_KEY);
+    let list = [];
+    if (raw) { try { list = JSON.parse(raw); } catch (e) { list = []; } }
+    // One-time cleanup: money moved into a jar used to be written here as its own
+    // entry. It is now derived from what each jar holds, so drop the old ones or
+    // they would be counted twice.
+    if (!safeGet(WALLET_MIGRATED_KEY)) {
+      list = list.filter(e => !/^(Toward|Returned from) /.test(e.note || ''));
+      safeSet(WALLET_KEY, JSON.stringify(list));
+      safeSet(WALLET_MIGRATED_KEY, '1');
+    }
+    return list;
   }
-  // Don't let a queued edit disappear if the tab is closed straight after it.
-  addEventListener('beforeunload', () => { if (pendingSaves.size) flushSaves(); });
+  function saveWallet() { safeSet(WALLET_KEY, JSON.stringify(walletLog)); }
 
-  function saveGoals() { queueSave('jars', () => request('/api/jars', { jars: goals })); }
-  function saveWallet() { queueSave('wallet', () => request('/api/wallet', { entries: walletLog })); }
-  function saveSavings() { queueSave('savings', () => request('/api/savings', { entries: savingsLog })); }
-  function saveFundingLog() { queueSave('funding', () => request('/api/funding', { entries: fundingLog })); }
-  function saveSavingsGoal() { queueSave('prefs', () => request('/api/prefs', { savingsGoal })); }
+  function loadSavings() {
+    const raw = safeGet(SAVINGS_KEY);
+    if (raw) { try { return JSON.parse(raw); } catch (e) {} }
+    return [];
+  }
+  function saveSavings() { safeSet(SAVINGS_KEY, JSON.stringify(savingsLog)); }
 
-  let goals = [];
-  let fundingLog = [];
-  let walletLog = [];
-  let savingsLog = [];
-  let savingsGoal = 20000;
+  let goals = loadGoals();
+  let fundingLog = loadFundingLog();
+  let walletLog = loadWallet();
+  let savingsLog = loadSavings();
+  let savingsGoal = Number(safeGet(SAVINGS_GOAL_KEY)) || 20000;
   let activePage = 'home';
   let pendingPhoto = '';
 
@@ -1632,7 +1617,7 @@ if (location.protocol !== 'http:' && location.protocol !== 'https:') {
       if (done) return; done = true;
       const v = parseFloat(input.value);
       savingsGoal = (!isNaN(v) && v >= 0) ? v : cur;
-      saveSavingsGoal();
+      safeSet(SAVINGS_GOAL_KEY, String(savingsGoal));
       el.innerHTML = ''; // drop the field first, or renderSavings leaves it in place
       renderSavings();
       toast(`Target set to ${formatMoney(savingsGoal)}`);
@@ -2112,118 +2097,7 @@ if (location.protocol !== 'http:' && location.protocol !== 'https:') {
     closeModal(); refreshActivePage();
   });
 
-  /* ---------- rescue ----------
-     Jars used to live in this browser rather than on a server. A copy of the
-     app served without the API — an old static deployment still sitting on a
-     URL — would otherwise render an empty planner over the top of data that is
-     still perfectly intact underneath. This finds it and gives it back. */
-  const LEGACY_KEYS = ['dreamreel_goals', 'dreamreel_wallet', 'dreamreel_savings',
-                       'dreamreel_funding_log', 'dreamreel_savings_goal'];
-
-  function readLegacy() {
-    const raw = {};
-    let found = false;
-    LEGACY_KEYS.forEach(k => {
-      try {
-        const v = localStorage.getItem(k);
-        if (v !== null) { raw[k] = v; found = true; }
-      } catch (e) { /* storage blocked */ }
-    });
-    if (!found) return null;
-    const parse = k => { try { return JSON.parse(raw[k] || '[]'); } catch (e) { return []; } };
-    const data = { raw, jars: parse('dreamreel_goals'), wallet: parse('dreamreel_wallet'),
-                   savings: parse('dreamreel_savings') };
-    return (data.jars.length || data.wallet.length || data.savings.length) ? data : null;
-  }
-
-  function offerRescue() {
-    const found = readLegacy();
-    if (!found) return false;
-
-    const rows = [
-      ['Jars', found.jars.length],
-      ['Wallet entries', found.wallet.length],
-      ['Savings entries', found.savings.length]
-    ].filter(r => r[1]);
-
-    const veil = document.createElement('div');
-    veil.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;' +
-      'justify-content:center;padding:24px;background:rgba(0,0,0,.55);overflow:auto';
-    veil.innerHTML =
-      '<div style="max-width:460px;width:100%;padding:32px;background:var(--paper,#FFFCF8);' +
-      'border:1px solid var(--line,rgba(191,126,129,.3));border-radius:4px;text-align:center;' +
-      'color:var(--plum,#574144)">' +
-        '<p style="margin:0;font-family:var(--font-label,sans-serif);text-transform:uppercase;' +
-        'letter-spacing:.24em;font-size:.6rem;color:var(--rose-deep,#9A5D61)">Your jars are safe</p>' +
-        '<h2 style="font-family:var(--font-display,Georgia,serif);font-size:1.6rem;font-weight:500;' +
-        'margin:10px 0 12px">Found on this <em style="color:var(--rose-deep,#9A5D61)">device</em></h2>' +
-        '<p style="font-size:.88rem;color:var(--plum-dim,rgba(87,65,68,.66));margin:0 0 18px">' +
-        'This copy of jars has no server behind it, so it cannot reach your account — but your ' +
-        'data is still here in this browser, untouched. Download it, then restore it from the ' +
-        'account page of the app running on your computer.</p>' +
-        '<ul style="list-style:none;margin:0 0 20px;padding:14px 18px;text-align:left;' +
-        'background:var(--cream,#F9F1E8);border:1px solid var(--line-soft,rgba(191,126,129,.16));' +
-        'border-radius:3px;font-family:var(--font-display,Georgia,serif);font-size:1.05rem">' +
-          rows.map(r => '<li style="display:flex;justify-content:space-between;gap:14px">' +
-            '<span>' + r[0] + '</span><b style="font-weight:500;color:var(--rose-deep,#9A5D61)">' +
-            r[1] + '</b></li>').join('') +
-        '</ul>' +
-        '<button id="rescueGet" style="width:100%;padding:13px 24px;border:0;border-radius:999px;' +
-        'cursor:pointer;background:var(--rose-deep,#9A5D61);color:var(--cream,#F9F1E8);' +
-        'font-family:var(--font-label,sans-serif);text-transform:uppercase;letter-spacing:.15em;' +
-        'font-size:.6rem">Download my backup</button>' +
-        '<button id="rescueClose" style="width:100%;margin-top:9px;padding:13px 24px;cursor:pointer;' +
-        'border:1px solid var(--line,rgba(191,126,129,.3));border-radius:999px;background:transparent;' +
-        'color:var(--plum-dim,rgba(87,65,68,.66));font-family:var(--font-label,sans-serif);' +
-        'text-transform:uppercase;letter-spacing:.15em;font-size:.6rem">Close</button>' +
-        '<p style="font-size:.78rem;color:var(--plum-dim,rgba(87,65,68,.66));margin:14px 0 0">' +
-        'Nothing here is deleted, by downloading it or by closing this. Your data stays in this ' +
-        'browser until you move it yourself.</p>' +
-      '</div>';
-
-    // Never trap anyone behind it: a button, the backdrop and Escape all close.
-    const shut = () => { document.removeEventListener('keydown', onKey); veil.remove(); };
-    const onKey = e => { if (e.key === 'Escape') shut(); };
-    document.addEventListener('keydown', onKey);
-    veil.addEventListener('click', e => { if (e.target === veil) shut(); });
-
-    document.body.appendChild(veil);
-    veil.querySelector('#rescueClose').addEventListener('click', shut);
-    veil.querySelector('#rescueGet').addEventListener('click', e => {
-      const blob = new Blob([JSON.stringify(found.raw, null, 2)], { type: 'application/json' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = 'jars-backup.json';
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-      e.target.textContent = 'Downloaded ✓';
-    });
-    return true;
-  }
-
-  /* ---------- start ----------
-     Nothing is drawn until this account's own data has arrived, so one user's
-     jars can never flash up for another. */
-  (async function start() {
-    try {
-      const me = await request('/api/auth/me');
-      if (!me.authenticated) { location.href = '/login'; return; }
-      document.getElementById('whoami').textContent = me.user.email;
-
-      const state = await request('/api/state');
-      goals = state.jars || [];
-      walletLog = state.wallet || [];
-      savingsLog = state.savings || [];
-      fundingLog = state.funding || [];
-      savingsGoal = Number(state.savingsGoal) || 20000;
-      renderHome();
-    } catch (err) {
-      // A copy served without the API — an old static deployment, most likely.
-      // If this browser still holds jars, say so and hand them back rather than
-      // leaving someone staring at an empty planner.
-      if (!offerRescue()) toast('Could not load your jars. Please refresh.');
-    }
-  })();
+  renderHome();
 </script>
 </body>
 </html>

@@ -13,12 +13,3 @@ Desktop.ini
 .claude/settings.local.json
 
 .vercel
-
-# Server
-node_modules/
-.env
-.env.local
-data/
-*.db
-*.db-shm
-*.db-wal
