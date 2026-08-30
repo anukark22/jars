@@ -5,11 +5,15 @@
   "type": "module",
   "description": "A soft, romantic savings planner",
   "scripts": {
-    "dev": "vercel dev"
+    "dev": "vercel dev",
+    "test": "node test/roundtrip.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^0.10.4",
     "bcryptjs": "^2.4.3",
     "resend": "^4.0.1"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8"
   }
 }
