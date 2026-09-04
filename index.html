@@ -659,6 +659,8 @@
   </div>
   <div class="nav-right">
     <button class="theme-toggle" id="themeToggle" title="Switch theme" aria-label="Switch theme">☾</button>
+    <button class="theme-toggle" id="restoreBtn" title="Restore from a backup file" aria-label="Restore from a backup file">⤓</button>
+    <input type="file" id="restoreFile" accept="application/json,.json" hidden>
     <button class="theme-toggle" id="logoutBtn" title="Log out" aria-label="Log out">⏻</button>
     <button class="btn-add" id="openAddModal">+ Add a Dream</button>
   </div>
@@ -1105,6 +1107,58 @@
     const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
     applyTheme(next);
     safeSet(THEME_KEY, next);
+  });
+
+
+  /* ---------- restore from a backup file ----------
+     A jars-backup.json holds the same keys the planner saves under, so putting
+     it back is a matter of writing each one into the signed-in account. */
+  const restoreBtn = document.getElementById('restoreBtn');
+  const restoreFile = document.getElementById('restoreFile');
+  const BACKUP_KEYS = ['dreamreel_goals', 'dreamreel_wallet', 'dreamreel_savings',
+                       'dreamreel_funding_log', 'dreamreel_savings_goal'];
+
+  restoreBtn.addEventListener('click', () => { restoreFile.value = ''; restoreFile.click(); });
+
+  restoreFile.addEventListener('change', async () => {
+    const file = restoreFile.files[0];
+    if (!file) return;
+    let raw;
+    try { raw = JSON.parse(await file.text()); }
+    catch (e) { alert('That file is not a jars backup — it could not be read as JSON.'); return; }
+
+    const count = k => { try { return JSON.parse(raw[k] || '[]').length; } catch (e) { return 0; } };
+    const jarCount = count('dreamreel_goals');
+    const walletCount = count('dreamreel_wallet');
+    const savingsCount = count('dreamreel_savings');
+    if (!jarCount && !walletCount && !savingsCount) {
+      alert('There was nothing to restore in that file.');
+      return;
+    }
+
+    const bits = [];
+    if (jarCount) bits.push(jarCount + ' jar' + (jarCount === 1 ? '' : 's'));
+    if (walletCount) bits.push(walletCount + ' wallet entr' + (walletCount === 1 ? 'y' : 'ies'));
+    if (savingsCount) bits.push(savingsCount + ' savings entr' + (savingsCount === 1 ? 'y' : 'ies'));
+
+    // Say plainly what is about to happen to anything already here.
+    const hasNow = goals.length + walletLog.length + savingsLog.length;
+    const warning = hasNow
+      ? '\n\nThis REPLACES what is in this account right now (' + hasNow + ' item' +
+        (hasNow === 1 ? '' : 's') + '). That cannot be undone.'
+      : '';
+    if (!confirm('Restore ' + bits.join(', ') + ' into this account?' + warning)) return;
+
+    BACKUP_KEYS.forEach(k => { if (raw[k] !== undefined && raw[k] !== null) safeSet(k, String(raw[k])); });
+
+    // Read it all back the ordinary way, so what appears is what was saved.
+    goals = loadGoals();
+    walletLog = loadWallet();
+    savingsLog = loadSavings();
+    fundingLog = loadFundingLog();
+    savingsGoal = Number(safeGet(SAVINGS_GOAL_KEY)) || 20000;
+    showPage('home');
+    toast('Restored ' + bits.join(', '));
   });
 
   /* ---------- log out ---------- */
