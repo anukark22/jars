@@ -42,7 +42,7 @@
   </form>
   <p class="msg" id="msg" hidden></p>
   <div class="links"><a href="login.html">I already have an account</a></div>
-  <p class="foot">Your jars are saved to your account, so they follow you to any device you log in from.</p>
+  <p class="foot">Accounts are saved in this browser only. They are not a secure login and do not sync to other devices.</p>
 </main>
 
 <script src="auth.js"></script>
@@ -51,34 +51,31 @@
   addPasswordReveals();
   redirectIfLoggedIn();
 
-  /* Says up front what this browser is still holding, so making an account
+  /* Says up front what this browser already holds, so making the first account
      reads as keeping that work rather than starting again. */
-  const waiting = readLocalData();
+  const waiting = legacyData();
   if (waiting) {
-    const bits = describeLocal(waiting);
-    const list = bits.length > 1
-      ? bits.slice(0, -1).map(b => '<b>' + b + '</b>').join(', ') + ' and <b>' + bits[bits.length - 1] + '</b>'
-      : '<b>' + bits[0] + '</b>';
-    const carry = document.getElementById('carry');
-    carry.innerHTML = 'This browser still has ' + list +
-      ' saved on it. Once you have an account we will offer to move them across.';
-    carry.hidden = false;
+    const bits = describeLegacy(waiting);
+    if (bits.length) {
+      const list = bits.length > 1
+        ? bits.slice(0, -1).map(b => '<b>' + b + '</b>').join(', ') + ' and <b>' + bits[bits.length - 1] + '</b>'
+        : '<b>' + bits[0] + '</b>';
+      const carry = document.getElementById('carry');
+      carry.innerHTML = 'This browser already has ' + list +
+        ' saved from before there were accounts. They will be kept in this first account.';
+      carry.hidden = false;
+    }
   }
 
   const form = document.getElementById('form');
   const msg = document.getElementById('msg');
 
-  form.addEventListener('submit', async e => {
+  form.addEventListener('submit', e => {
     e.preventDefault();
     clearSay(msg);
-    submitting(form, true, 'Creating…');
-    try {
-      await auth('signup', {
-        email: form.email.value, password: form.password.value, confirm: form.confirm.value
-      });
-      await offerImport(false);          // a brand new account is always empty
-      location.href = 'index.html';      // signed in already
-    } catch (err) { say(msg, err.message); submitting(form, false); }
+    const out = signUp(form.email.value, form.password.value, form.confirm.value);
+    if (out.error) { say(msg, out.error); return; }
+    location.href = 'index.html';       // signed in already
   });
 </script>
 </body>

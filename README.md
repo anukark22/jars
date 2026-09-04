@@ -11,7 +11,6 @@ Save up for the things you want, in jars.
 - **Home** — a greeting, what you're currently saving for, your collections, the jar in focus, and a ledger
 - **Wallet** — the money you actually have. Add income, subtract spending, and see what's left after everything already sitting in your jars
 - **Priority** — a three-column board (Must Have / Nice To Have / Someday). Drag a jar between columns to change how much it matters
-- **Repeats** — the things that come back around: a membership, rent, a birthday. Every week, month or year, or every few of them. Shows what they add up to per month and marks each occurrence on the calendar
 - **Events** — everything with a date, grouped by month
 - **Calendar** — a month grid; click any day to see what's on it or add something new to that date
 
