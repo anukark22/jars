@@ -13,3 +13,9 @@ Desktop.ini
 .claude/settings.local.json
 
 .vercel
+
+# Node
+node_modules/
+.env
+.env.local
+.env*.local
