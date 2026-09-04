@@ -294,6 +294,92 @@ section('12. Deleting an account takes its data with it');
   check('Alice is unaffected', (await api.getData(laptop)).body.jars.length === 2);
 }
 
+
+section('13. Recurring events store and sync like everything else');
+{
+  // The reset in section 11 signed every device out; bring the phone back.
+  await api.auth(phone, 'login', { email: 'alice@example.com', password: 'brandnew12345' });
+
+  const reps = [
+    { id: 'r1', name: 'Gym membership', amount: 1500, cadence: 'month', step: 1, startDate: '2026-09-05', note: '', createdAt: 1 },
+    { id: 'r2', name: 'Yoga class',     amount: 300,  cadence: 'week',  step: 1, startDate: '2026-09-02', note: '', createdAt: 2 },
+    { id: 'r3', name: "Shravanth's birthday", amount: 0, cadence: 'year', step: 1, startDate: '2027-03-31', note: '', createdAt: 3 }
+  ];
+  await api.putData(laptop, { repeats: reps });
+
+  const rows = await sql`SELECT id, name, cadence, step, start_date FROM repeats ORDER BY created_at`;
+  check('repeats are rows in the database', rows.length === 3, JSON.stringify(rows));
+  check('the rule round-tripped',
+    rows[0].cadence === 'month' && rows[0].step === 1 && rows[0].start_date === '2026-09-05');
+
+  const onPhone = (await api.getData(phone)).body;
+  check('the phone sees them', onPhone.repeats.length === 3,
+    JSON.stringify(onPhone.repeats.map(r => r.name)));
+  check('field names come back as the app expects',
+    onPhone.repeats[0].startDate === '2026-09-05' && onPhone.repeats[0].cadence === 'month');
+
+  onPhone.repeats[0].amount = 1800;
+  await api.putData(phone, { repeats: onPhone.repeats });
+  const back = (await api.getData(laptop)).body.repeats.find(r => r.id === 'r1');
+  check('an edit on one device shows on the other', back.amount === 1800);
+
+  await api.putData(laptop, { repeats: [{ id: 'r9', name: 'junk', cadence: 'fortnight', step: 999, startDate: '2026-01-01' }] });
+  const junk = (await sql`SELECT cadence, step FROM repeats WHERE id = 'r9'`)[0];
+  check('an unknown cadence falls back to month', junk.cadence === 'month', junk.cadence);
+  check('an absurd step is clamped', junk.step === 52, String(junk.step));
+
+  await api.putData(laptop, { repeats: reps });
+  const carol = device('carol');
+  await api.auth(carol, 'signup', { email: 'carol@example.com', password: 'carolpass123', confirm: 'carolpass123' });
+  check('a new account has no repeats', (await api.getData(carol)).body.repeats.length === 0);
+  check('and the first account still has its own',
+    (await api.getData(laptop)).body.repeats.length === 3);
+}
+
+section('14. Occurrence dates are worked out correctly');
+{
+  // The same maths index.html uses, kept here so a change to one is caught.
+  const occurrenceOf = (rep, k) => {
+    const [y, m, d] = String(rep.startDate).split('-').map(Number);
+    const n = k * Math.max(1, Number(rep.step) || 1);
+    if (rep.cadence === 'week') { const dt = new Date(y, m - 1, d); dt.setDate(dt.getDate() + 7 * n); return dt; }
+    const monthsOn = rep.cadence === 'year' ? n * 12 : n;
+    const lastDay = new Date(y, m - 1 + monthsOn + 1, 0).getDate();
+    return new Date(y, m - 1 + monthsOn, Math.min(d, lastDay));
+  };
+  const ds = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  const seq = (rep, n) => Array.from({ length: n }, (_, k) => ds(occurrenceOf(rep, k))).join();
+
+  check('weekly steps by 7 days',
+    seq({ cadence: 'week', step: 1, startDate: '2026-09-02' }, 3) === '2026-09-02,2026-09-09,2026-09-16');
+  check('fortnightly steps by 14',
+    seq({ cadence: 'week', step: 2, startDate: '2026-09-02' }, 3) === '2026-09-02,2026-09-16,2026-09-30');
+  check('monthly keeps the same day',
+    seq({ cadence: 'month', step: 1, startDate: '2026-09-05' }, 3) === '2026-09-05,2026-10-05,2026-11-05');
+  check('the 31st clamps in short months but does not drift',
+    seq({ cadence: 'month', step: 1, startDate: '2027-01-31' }, 4) === '2027-01-31,2027-02-28,2027-03-31,2027-04-30');
+  check('quarterly steps by 3 months',
+    seq({ cadence: 'month', step: 3, startDate: '2026-09-05' }, 3) === '2026-09-05,2026-12-05,2027-03-05');
+  check('yearly steps by a year',
+    seq({ cadence: 'year', step: 1, startDate: '2027-03-31' }, 3) === '2027-03-31,2028-03-31,2029-03-31');
+  check('29 February falls back to the 28th in a common year',
+    seq({ cadence: 'year', step: 1, startDate: '2028-02-29' }, 2) === '2028-02-29,2029-02-28');
+
+  const monthly = rep => {
+    const amt = Number(rep.amount) || 0, step = Math.max(1, Number(rep.step) || 1);
+    if (rep.cadence === 'week') return amt * 52 / 12 / step;
+    if (rep.cadence === 'year') return amt / 12 / step;
+    return amt / step;
+  };
+  check('a monthly cost counts once', monthly({ amount: 1500, cadence: 'month', step: 1 }) === 1500);
+  check('a weekly cost becomes 52/12 of itself',
+    Math.round(monthly({ amount: 300, cadence: 'week', step: 1 })) === 1300);
+  check('a yearly cost is spread over twelve',
+    monthly({ amount: 1200, cadence: 'year', step: 1 }) === 100);
+  check('a quarterly cost is a third of a month',
+    monthly({ amount: 900, cadence: 'month', step: 3 }) === 300);
+}
+
 console.log('\n' + '-'.repeat(52));
 console.log(`${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

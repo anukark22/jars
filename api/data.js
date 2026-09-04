@@ -5,7 +5,7 @@
 
 import {
   getState, replaceJars, replaceWallet, replaceSavings, replaceFunding,
-  setSavingsGoal, userHasData, ensureSchema
+  setSavingsGoal, replaceRepeats, userHasData, ensureSchema
 } from '../lib/db.js';
 import { currentUser, readBody, send, fail } from '../lib/auth.js';
 
@@ -26,6 +26,7 @@ export default async function handler(req, res) {
       if (Array.isArray(body.wallet))  jobs.push(replaceWallet(me.id, body.wallet));
       if (Array.isArray(body.savings)) jobs.push(replaceSavings(me.id, body.savings));
       if (Array.isArray(body.funding)) jobs.push(replaceFunding(me.id, body.funding));
+      if (Array.isArray(body.repeats)) jobs.push(replaceRepeats(me.id, body.repeats));
       if (body.savingsGoal !== undefined) jobs.push(setSavingsGoal(me.id, body.savingsGoal));
       if (!jobs.length) return send(res, 400, { error: 'Nothing to save.' });
       await Promise.all(jobs);
@@ -44,6 +45,7 @@ export default async function handler(req, res) {
       await replaceWallet(me.id, body.wallet || []);
       await replaceSavings(me.id, body.savings || []);
       await replaceFunding(me.id, body.funding || []);
+      await replaceRepeats(me.id, body.repeats || []);
       if (body.savingsGoal !== undefined) await setSavingsGoal(me.id, body.savingsGoal);
       return send(res, 200, { ok: true, imported: (body.jars || []).length });
     }

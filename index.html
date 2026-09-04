@@ -609,6 +609,56 @@
     .event-row { grid-template-columns: 62px 1fr; }
     .event-side { grid-column: 2; align-items: flex-start; }
   }
+
+  /* ---------- repeats ---------- */
+  .repeat-rule {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+    margin-bottom: 14px; font-family: var(--font-display); font-size: 1.02rem;
+    color: var(--plum-dim);
+  }
+  /* Match the wallet's fields rather than falling back to the browser's,
+     which renders white boxes in the dark theme. */
+  .repeat-rule input, .repeat-rule select {
+    background: var(--paper); border: 1px solid var(--line); color: var(--plum);
+    padding: 11px 12px; border-radius: 2px;
+    font-family: var(--font-body); font-size: .9rem;
+  }
+  .repeat-rule input:focus, .repeat-rule select:focus { outline: none; border-color: var(--rose); }
+  .repeat-rule input[type="number"] { width: 74px; text-align: center; }
+  .repeat-rule input[type="date"] { flex: 1 1 160px; min-width: 150px; }
+  /* the little calendar picker is black-on-dark by default */
+  :root[data-theme="dark"] .repeat-rule input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(1) opacity(.7);
+  }
+  .repeat-word { font-style: italic; }
+
+  .repeat-row {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    padding: 15px 18px; margin-bottom: 10px;
+    background: var(--paper); border: 1px solid var(--line-soft); border-radius: 3px;
+  }
+  .repeat-row.is-editing { border-color: var(--rose); }
+  .repeat-main { flex: 1 1 190px; min-width: 0; }
+  .repeat-name { font-family: var(--font-display); font-size: 1.2rem; color: var(--plum); }
+  .repeat-when {
+    font-family: var(--font-body); font-size: .76rem; color: var(--plum-dim);
+    letter-spacing: .02em; margin-top: 2px;
+  }
+  .repeat-next {
+    font-family: var(--font-label); text-transform: uppercase; letter-spacing: .14em;
+    font-size: .56rem; color: var(--rose-deep); margin-top: 6px;
+  }
+  .repeat-next.is-today { color: var(--good); }
+  .repeat-cost { text-align: right; font-family: var(--font-display); }
+  .repeat-cost b { display: block; font-size: 1.2rem; font-weight: 500; color: var(--plum); }
+  .repeat-cost span { font-size: .74rem; font-family: var(--font-body); color: var(--plum-faint); }
+  .repeat-acts { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  .cal-dot.type-repeat { background: var(--mauve-deep); }
+  @media (max-width: 560px) {
+    .repeat-cost { text-align: left; }
+    .repeat-row { gap: 10px; }
+  }
 </style>
 </head>
 <body>
@@ -650,6 +700,7 @@
     <button class="navlink" data-page="wallet">Wallet</button>
     <button class="navlink" data-page="savings">Savings</button>
     <button class="navlink" data-page="priority">Priority</button>
+    <button class="navlink" data-page="repeats">Repeats</button>
     <button class="navlink" data-page="events">Events</button>
     <button class="navlink" data-page="calendar">Calendar</button>
   </div>
@@ -782,6 +833,46 @@
     </div>
     <div class="board" id="board"></div>
     <p class="hint-text">Drag a card into another column to change how much it matters.</p>
+  </section>
+
+  <!-- ============ REPEATS ============ -->
+  <section id="page-repeats" style="display:none;">
+    <div class="page-head">
+      <p class="label">Repeats</p>
+      <h1 class="page-title">again and <em>again</em></h1>
+      <p class="page-sub">"the things that come back around"</p>
+    </div>
+
+    <div class="wallet-balance">
+      <p class="label">Roughly every month</p>
+      <p class="wallet-amount" id="repeatsMonthly">₹0</p>
+      <p class="wallet-note" id="repeatsHint"></p>
+    </div>
+
+    <form class="wallet-form" id="repeatForm">
+      <div class="wallet-inputs">
+        <input type="text" id="repeatName" maxlength="60" placeholder="What repeats?" required>
+        <input type="number" id="repeatAmount" min="0" step="0.01" placeholder="Amount each time (optional)">
+      </div>
+      <div class="repeat-rule">
+        <span class="repeat-word">Every</span>
+        <input type="number" id="repeatStep" min="1" max="52" value="1" aria-label="How many">
+        <select id="repeatCadence" aria-label="Week, month or year">
+          <option value="week">week</option>
+          <option value="month" selected>month</option>
+          <option value="year">year</option>
+        </select>
+        <span class="repeat-word">starting</span>
+        <input type="date" id="repeatStart" aria-label="First date" required>
+      </div>
+      <div class="wallet-buttons">
+        <button type="submit" class="btn-primary" id="repeatSubmit">Add a repeat</button>
+        <button type="button" class="btn-ghost" id="repeatCancel" hidden>Cancel</button>
+      </div>
+    </form>
+
+    <div class="rule"><span>Coming round</span></div>
+    <div id="repeatsList"></div>
   </section>
 
   <!-- ============ EVENTS ============ -->
@@ -994,6 +1085,7 @@
   function saveWallet() { queueSave('wallet', { wallet: walletLog }); }
   function saveSavings() { queueSave('savings', { savings: savingsLog }); }
   function saveFundingLog() { queueSave('funding', { funding: fundingLog }); }
+  function saveRepeats() { queueSave('repeats', { repeats: repeats }); }
   function saveSavingsGoal() { queueSave('prefs', { savingsGoal: savingsGoal }); }
 
   // The theme is how the screen looks on this device, not part of the account.
@@ -1004,6 +1096,7 @@
   let fundingLog = [];
   let walletLog = [];
   let savingsLog = [];
+  let repeats = [];
   let savingsGoal = 20000;
   let activePage = 'home';
   let pendingPhoto = '';
@@ -1041,10 +1134,12 @@
   // Local date, not UTC. toISOString() would roll back a day for anyone east
   // of Greenwich in the early hours, mis-marking "today" on the calendar and
   // stamping entries with yesterday's date.
-  function todayStr() {
-    const d = new Date();
+  // Built from the local date, never toISOString, which would shift the day
+  // backwards for anyone east of UTC.
+  function dateStr(d) {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }
+  function todayStr() { return dateStr(new Date()); }
   function fullDate(s) { const d = new Date(s + 'T00:00:00'); return isNaN(d) ? '' : d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }); }
   function monthLabel(s) { const d = new Date(s + 'T00:00:00'); return isNaN(d) ? '' : d.toLocaleDateString(undefined, { month: 'long', year: 'numeric' }); }
   function dayNum(s) { const d = new Date(s + 'T00:00:00'); return isNaN(d) ? '' : d.getDate(); }
@@ -1218,6 +1313,7 @@
     else if (activePage === 'wallet') renderWallet();
     else if (activePage === 'savings') renderSavings();
     else if (activePage === 'priority') renderPriority();
+    else if (activePage === 'repeats') renderRepeats();
     else if (activePage === 'events') renderEvents();
     else if (activePage === 'calendar') renderCalendar();
   }
@@ -1831,6 +1927,11 @@
     const days = new Date(year, month + 1, 0).getDate();
     const byDate = {};
     goals.forEach(g => { if (g.eventDate) (byDate[g.eventDate] = byDate[g.eventDate] || []).push(g); });
+    // Repeats are worked out for this month rather than stored per day.
+    const repeatDays = {};
+    repeats.forEach(r => occurrencesInMonth(r, year, month).forEach(ds => {
+      (repeatDays[ds] = repeatDays[ds] || []).push(r);
+    }));
 
     let html = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => `<div class="cal-head">${d}</div>`).join('');
     for (let i = 0; i < start; i++) html += `<div class="cal-cell blank"></div>`;
@@ -1843,7 +1944,7 @@
       if (ds === justAddedDate) cls.push('just-added');
       html += `<div class="${cls.join(' ')}" data-date="${ds}">
         <span class="cal-num">${d}</span>
-        <span class="cal-dots">${evs.slice(0, 3).map(g => `<span class="cal-dot type-${g.type}"></span>`).join('')}</span>
+        <span class="cal-dots">${evs.slice(0, 3).map(g => `<span class="cal-dot type-${g.type}"></span>`).join('')}${(repeatDays[ds] || []).slice(0, 2).map(() => `<span class="cal-dot type-repeat"></span>`).join('')}</span>
       </div>`;
     }
     const grid = document.getElementById('calGrid');
@@ -1859,23 +1960,229 @@
     selectedCalendarDate = ds;
     document.querySelectorAll('.cal-cell[data-date]').forEach(c => c.classList.toggle('selected', c.dataset.date === ds));
     const dayGoals = goals.filter(g => g.eventDate === ds);
+    const [yy, mm] = ds.split('-').map(Number);
+    const dayRepeats = repeats.filter(r => occurrencesInMonth(r, yy, mm - 1).includes(ds));
     const detail = document.getElementById('calendarDayDetail');
+    const repeatsHtml = dayRepeats.length ? `<div class="repeats-on-day">${dayRepeats.map(r =>
+      `<div class="repeat-row">
+        <div class="repeat-main">
+          <div class="repeat-name">${escapeHtml(r.name)}</div>
+          <div class="repeat-when">${cadenceWords(r)}</div>
+        </div>
+        ${Number(r.amount) ? `<div class="repeat-cost"><b>${formatMoney(r.amount)}</b></div>` : ''}
+      </div>`).join('')}</div>` : '';
     detail.innerHTML = `
       <div class="day-detail-head">
         <h3 class="day-detail-title">${escapeHtml(fullDate(ds))}</h3>
         <button type="button" class="btn-ghost cal-add-btn">+ Add on this day</button>
       </div>
+      ${repeatsHtml}
       ${dayGoals.length ? `<div class="grid">${dayGoals.map(g => cardHtml(g)).join('')}</div>`
-        : `<p class="empty-hint">Nothing planned yet — add something to this day.</p>`}`;
+        : (dayRepeats.length ? '' : `<p class="empty-hint">Nothing planned yet — add something to this day.</p>`)}`;
     attachCardListeners(detail);
     detail.querySelector('.cal-add-btn').addEventListener('click', () => openModalForAddOnDate(ds));
   }
+
+
+  /* ---------- repeats ----------
+     Only the rule is stored. Each occurrence is worked out from the start date
+     when it is needed, so nothing has to be generated ahead or tidied up
+     behind. Occurrences are always derived from the original day of the month
+     rather than from the one before: the 31st becomes the 28th in February and
+     is back on the 31st in March, instead of drifting earlier for good. */
+
+  function occurrenceOf(rep, k) {
+    const [y, m, d] = String(rep.startDate || '').split('-').map(Number);
+    if (!y || !m || !d) return null;
+    const n = k * Math.max(1, Number(rep.step) || 1);
+    if (rep.cadence === 'week') {
+      const dt = new Date(y, m - 1, d);
+      dt.setDate(dt.getDate() + 7 * n);
+      return dt;
+    }
+    const monthsOn = rep.cadence === 'year' ? n * 12 : n;
+    const lastDay = new Date(y, m - 1 + monthsOn + 1, 0).getDate();
+    return new Date(y, m - 1 + monthsOn, Math.min(d, lastDay));
+  }
+
+  function nextOccurrence(rep, fromStr) {
+    const from = fromStr || todayStr();
+    for (let k = 0; k < 4000; k++) {
+      const dt = occurrenceOf(rep, k);
+      if (!dt) return null;
+      const ds = dateStr(dt);
+      if (ds >= from) return ds;
+    }
+    return null;
+  }
+
+  function occurrencesInMonth(rep, year, month) {
+    const mm = String(month + 1).padStart(2, '0');
+    const first = year + '-' + mm + '-01';
+    const lastDay = new Date(year, month + 1, 0).getDate();
+    const last = year + '-' + mm + '-' + String(lastDay).padStart(2, '0');
+    const out = [];
+    for (let k = 0; k < 4000; k++) {
+      const dt = occurrenceOf(rep, k);
+      if (!dt) break;
+      const ds = dateStr(dt);
+      if (ds > last) break;
+      if (ds >= first) out.push(ds);
+    }
+    return out;
+  }
+
+  // What one repeat works out to per month, so different rhythms can be added up.
+  function monthlyEquivalent(rep) {
+    const amt = Number(rep.amount) || 0;
+    const step = Math.max(1, Number(rep.step) || 1);
+    if (rep.cadence === 'week') return amt * 52 / 12 / step;
+    if (rep.cadence === 'year') return amt / 12 / step;
+    return amt / step;
+  }
+
+  function cadenceWords(rep) {
+    const step = Math.max(1, Number(rep.step) || 1);
+    const unit = rep.cadence === 'week' ? 'week' : rep.cadence === 'year' ? 'year' : 'month';
+    if (step === 1) return 'Every ' + unit;
+    if (unit === 'week' && step === 2) return 'Every fortnight';
+    if (unit === 'month' && step === 3) return 'Every quarter';
+    return 'Every ' + step + ' ' + unit + 's';
+  }
+
+  function whenWords(ds) {
+    if (!ds) return 'No dates left';
+    const today = todayStr();
+    if (ds === today) return 'Today';
+    const days = Math.round((new Date(ds + 'T00:00:00') - new Date(today + 'T00:00:00')) / 86400000);
+    if (days === 1) return 'Tomorrow';
+    if (days > 1 && days < 7) return 'In ' + days + ' days';
+    return 'Next on ' + fullDate(ds);
+  }
+
+  let editingRepeatId = null;
+
+  function renderRepeats() {
+    const monthly = repeats.reduce((sum, r) => sum + monthlyEquivalent(r), 0);
+    document.getElementById('repeatsMonthly').textContent = formatMoney(Math.round(monthly));
+
+    const withCost = repeats.filter(r => Number(r.amount) > 0).length;
+    document.getElementById('repeatsHint').textContent = !repeats.length
+      ? 'Nothing repeats yet — a membership, rent, a birthday.'
+      : withCost
+        ? repeats.length + ' repeat' + (repeats.length === 1 ? '' : 's') + ', ' + withCost +
+          ' with a cost. That is about ' + formatMoney(Math.round(monthly * 12)) + ' a year.'
+        : repeats.length + ' repeat' + (repeats.length === 1 ? '' : 's') + ', none with a cost yet.';
+
+    const list = document.getElementById('repeatsList');
+    if (!repeats.length) {
+      list.innerHTML = '<p class="empty-hint">Add the things that come back around — they show on your calendar too.</p>';
+      return;
+    }
+
+    // Soonest first, so the next thing to happen is at the top.
+    const sorted = [...repeats].sort((a, b) => {
+      const na = nextOccurrence(a) || '9999-99-99';
+      const nb = nextOccurrence(b) || '9999-99-99';
+      return na < nb ? -1 : na > nb ? 1 : 0;
+    });
+
+    list.innerHTML = sorted.map(r => {
+      const next = nextOccurrence(r);
+      const amt = Number(r.amount) || 0;
+      const cost = amt
+        ? '<div class="repeat-cost"><b>' + formatMoney(amt) + '</b><span>' +
+          formatMoney(Math.round(monthlyEquivalent(r))) + ' a month</span></div>'
+        : '';
+      return '<div class="repeat-row' + (editingRepeatId === r.id ? ' is-editing' : '') + '">' +
+        '<div class="repeat-main">' +
+          '<div class="repeat-name">' + escapeHtml(r.name) + '</div>' +
+          '<div class="repeat-when">' + cadenceWords(r) + (r.note ? ' · ' + escapeHtml(r.note) : '') + '</div>' +
+          '<div class="repeat-next' + (next === todayStr() ? ' is-today' : '') + '">' +
+            escapeHtml(whenWords(next)) + '</div>' +
+        '</div>' + cost +
+        '<div class="repeat-acts">' +
+          '<button type="button" class="btn-ghost repeat-edit" data-id="' + r.id + '">Edit</button>' +
+          '<button type="button" class="btn-ghost repeat-del" data-id="' + r.id + '">Remove</button>' +
+        '</div></div>';
+    }).join('');
+
+    list.querySelectorAll('.repeat-edit').forEach(b =>
+      b.addEventListener('click', () => startEditRepeat(b.dataset.id)));
+    list.querySelectorAll('.repeat-del').forEach(b =>
+      b.addEventListener('click', () => removeRepeat(b.dataset.id)));
+  }
+
+  const repeatForm = document.getElementById('repeatForm');
+  const repeatCancel = document.getElementById('repeatCancel');
+
+  function resetRepeatForm() {
+    editingRepeatId = null;
+    repeatForm.reset();
+    document.getElementById('repeatStep').value = 1;
+    document.getElementById('repeatCadence').value = 'month';
+    document.getElementById('repeatStart').value = todayStr();
+    document.getElementById('repeatSubmit').textContent = 'Add a repeat';
+    repeatCancel.hidden = true;
+  }
+
+  function startEditRepeat(id) {
+    const r = repeats.find(x => x.id === id);
+    if (!r) return;
+    editingRepeatId = id;
+    document.getElementById('repeatName').value = r.name || '';
+    document.getElementById('repeatAmount').value = Number(r.amount) || '';
+    document.getElementById('repeatStep').value = Math.max(1, Number(r.step) || 1);
+    document.getElementById('repeatCadence').value = r.cadence || 'month';
+    document.getElementById('repeatStart').value = r.startDate || todayStr();
+    document.getElementById('repeatSubmit').textContent = 'Save changes';
+    repeatCancel.hidden = false;
+    renderRepeats();
+    repeatForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    document.getElementById('repeatName').focus();
+  }
+
+  function removeRepeat(id) {
+    const r = repeats.find(x => x.id === id);
+    if (!r) return;
+    if (!confirm('Remove "' + r.name + '"?\n\nIt will stop showing on your calendar.')) return;
+    repeats = repeats.filter(x => x.id !== id);
+    if (editingRepeatId === id) resetRepeatForm();
+    saveRepeats();
+    renderRepeats();
+    if (activePage === 'calendar') renderCalendar();
+    toast('Removed');
+  }
+
+  repeatCancel.addEventListener('click', () => { resetRepeatForm(); renderRepeats(); });
+
+  repeatForm.addEventListener('submit', e => {
+    e.preventDefault();
+    const name = document.getElementById('repeatName').value.trim();
+    const amount = parseFloat(document.getElementById('repeatAmount').value) || 0;
+    const step = Math.max(1, Math.min(52, parseInt(document.getElementById('repeatStep').value, 10) || 1));
+    const cadence = document.getElementById('repeatCadence').value;
+    const startDate = document.getElementById('repeatStart').value || todayStr();
+    if (!name) { toast('Give it a name first'); return; }
+
+    if (editingRepeatId) {
+      const r = repeats.find(x => x.id === editingRepeatId);
+      if (r) Object.assign(r, { name, amount, step, cadence, startDate });
+      toast('Saved');
+    } else {
+      repeats.push({ id: rid(), name, amount, step, cadence, startDate, note: '', createdAt: Date.now() });
+      toast(cadenceWords({ cadence, step }).toLowerCase().replace('every', 'Repeating every'));
+    }
+    resetRepeatForm();
+    saveRepeats();
+    renderRepeats();
+  });
 
   /* ---------- nav ---------- */
   function showPage(p) {
     activePage = p;
     document.querySelectorAll('.navlink').forEach(t => t.classList.toggle('active', t.dataset.page === p));
-    ['home','wallet','savings','priority','events','calendar'].forEach(k => {
+    ['home','wallet','savings','priority','repeats','events','calendar'].forEach(k => {
       document.getElementById('page-' + k).style.display = k === p ? 'block' : 'none';
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -2128,6 +2435,7 @@
       walletLog = state.wallet || [];
       savingsLog = state.savings || [];
       fundingLog = state.funding || [];
+      repeats = state.repeats || [];
       savingsGoal = Number(state.savingsGoal) || 20000;
       renderHome();
     } catch (err) {
