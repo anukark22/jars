@@ -613,6 +613,33 @@
     .event-row { grid-template-columns: 62px 1fr; }
     .event-side { grid-column: 2; align-items: flex-start; }
   }
+
+  /* ---------- withdraw everything ---------- */
+  .withdraw-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+  .withdraw-row button { flex: 1 1 200px; }
+  .withdraw-all:disabled { opacity: .45; cursor: default; }
+  .withdraw-list {
+    max-height: 260px; overflow-y: auto; margin: 4px 0 14px; text-align: left;
+    background: var(--cream); border: 1px solid var(--line-soft); border-radius: 3px; padding: 6px 16px;
+  }
+  .withdraw-item {
+    display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+    padding: 8px 0; border-bottom: 1px solid var(--line-soft);
+  }
+  .withdraw-item:last-child { border-bottom: 0; }
+  .withdraw-item span { font-family: var(--font-display); font-size: 1.05rem; color: var(--plum); min-width: 0; overflow-wrap: anywhere; }
+  .withdraw-item small {
+    display: block; font-family: var(--font-label); text-transform: uppercase; letter-spacing: .13em;
+    font-size: .5rem; color: var(--plum-faint); margin-top: 2px;
+  }
+  .withdraw-item b { font-family: var(--font-display); font-weight: 500; color: var(--rose-deep); white-space: nowrap; }
+  .withdraw-total {
+    display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 18px; padding: 0 2px;
+  }
+  .withdraw-total span {
+    font-family: var(--font-label); text-transform: uppercase; letter-spacing: .15em; font-size: .56rem; color: var(--plum-dim);
+  }
+  .withdraw-total b { font-family: var(--font-display); font-weight: 500; font-size: 1.5rem; color: var(--plum); }
 </style>
 </head>
 <body>
@@ -716,6 +743,10 @@
         <span><i>Money in</i><b id="walletIn"></b></span>
         <span><i>In your jars</i><b id="walletInJars"></b></span>
         <span><i>Set aside</i><b id="walletInSavings"></b></span>
+      </div>
+      <div class="withdraw-row">
+        <button type="button" class="btn-ghost withdraw-all" id="withdrawAll">Withdraw everything to wallet</button>
+        <button type="button" class="btn-ghost withdraw-undo" id="withdrawUndo" hidden>Undo withdraw</button>
       </div>
       <p class="wallet-note" id="walletHint"></p>
     </div>
@@ -931,6 +962,25 @@
         <button type="submit" class="btn-primary">Put it in</button>
       </div>
     </form>
+  </div>
+</div>
+
+<div class="modal-overlay" id="withdrawOverlay">
+  <div class="modal modal-confirm">
+    <p class="label">Back to the wallet</p>
+    <h2 class="modal-title">Withdraw <em>everything</em>?</h2>
+    <p class="confirm-text">
+      Every jar is emptied and your savings are moved back, so the money is free to spend.
+      <span class="confirm-sub">The jars themselves stay — only the money moves.</span>
+    </p>
+    <div class="withdraw-list" id="withdrawList"></div>
+    <div class="withdraw-total">
+      <span>Wallet after</span><b id="withdrawAfter">₹0</b>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn-ghost" id="withdrawCancel">Keep it where it is</button>
+      <button type="button" class="btn-primary" id="withdrawConfirm">Withdraw ₹0</button>
+    </div>
   </div>
 </div>
 
@@ -1468,6 +1518,7 @@
     document.getElementById('walletIn').textContent = formatMoney(walletIn());
     document.getElementById('walletInJars').textContent = '− ' + formatMoney(inJars());
     document.getElementById('walletInSavings').textContent = '− ' + formatMoney(inSavings());
+    updateWithdrawButtons();
 
     const open = goals.filter(g => g.saved < g.target);
     const hint = document.getElementById('walletHint');
@@ -1988,6 +2039,108 @@
     if (putOverlay.classList.contains('open')) closePut();
     else if (confirmOverlay.classList.contains('open')) closeConfirm();
     else if (modalOverlay.classList.contains('open')) closeModal();
+  });
+
+
+  /* ---------- withdraw everything ----------
+     Empties every jar and the savings pot back into the wallet. The wallet is
+     derived (money in − in jars − set aside), so nothing is added to it
+     directly: each jar's amount goes to zero with a funding entry, exactly as
+     lowering it by hand would, and savings get one entry taking them to zero.
+     History is kept, and the last withdrawal can be undone. */
+  const withdrawOverlay = document.getElementById('withdrawOverlay');
+  let lastWithdraw = null;   // what the most recent withdrawal changed, for undo
+
+  const round2 = n => Math.round(n * 100) / 100;
+
+  function withdrawPlan() {
+    const jars = goals
+      .filter(g => (Number(g.saved) || 0) > 0)
+      .map(g => ({ g, amount: round2(Number(g.saved)) }))
+      .sort((a, b) => b.amount - a.amount);
+    const savings = round2(Math.max(0, inSavings()));
+    const total = round2(jars.reduce((s, j) => s + j.amount, 0) + savings);
+    return { jars, savings, total };
+  }
+
+  function updateWithdrawButtons() {
+    const plan = withdrawPlan();
+    const btn = document.getElementById('withdrawAll');
+    btn.disabled = plan.total <= 0;
+    btn.textContent = plan.total > 0
+      ? `Withdraw everything · ${formatMoney(plan.total)}`
+      : 'Nothing to withdraw';
+    document.getElementById('withdrawUndo').hidden = !lastWithdraw;
+  }
+
+  function openWithdraw() {
+    const plan = withdrawPlan();
+    if (plan.total <= 0) { toast('Every jar is already empty.'); return; }
+
+    const rows = plan.jars.map(({ g, amount }) => {
+      const where = g.category ? g.category : (g.type === 'celebration' ? 'celebration' : g.type === 'experience' ? 'somewhere to go' : 'jar');
+      return `<div class="withdraw-item"><span>${escapeHtml(g.name)}<small>${escapeHtml(where)}</small></span><b>${formatMoney(amount)}</b></div>`;
+    });
+    if (plan.savings > 0) {
+      rows.push(`<div class="withdraw-item"><span>Savings<small>set aside</small></span><b>${formatMoney(plan.savings)}</b></div>`);
+    }
+    document.getElementById('withdrawList').innerHTML = rows.join('');
+    document.getElementById('withdrawAfter').textContent = formatMoney(walletBalance() + plan.total);
+    document.getElementById('withdrawConfirm').textContent = `Withdraw ${formatMoney(plan.total)}`;
+    withdrawOverlay.classList.add('open');
+  }
+  function closeWithdraw() { withdrawOverlay.classList.remove('open'); }
+
+  function doWithdraw() {
+    const plan = withdrawPlan();
+    if (plan.total <= 0) { closeWithdraw(); return; }
+    const date = todayStr();
+    const undo = { jars: [], fundingEntries: [], savingsEntry: null, total: plan.total };
+
+    plan.jars.forEach(({ g, amount }) => {
+      undo.jars.push({ id: g.id, saved: g.saved });
+      const entry = { amount: -amount, date, goalId: g.id, goalName: g.name };
+      fundingLog.push(entry);
+      undo.fundingEntries.push(entry);
+      g.saved = 0;
+    });
+    if (plan.savings > 0) {
+      const entry = { id: rid(), amount: -plan.savings, note: 'Withdrawn to wallet', date };
+      savingsLog.push(entry);
+      undo.savingsEntry = entry;
+    }
+
+    saveGoals(goals); saveFundingLog(); saveSavings();
+    lastWithdraw = undo;
+    closeWithdraw();
+    toast(`${formatMoney(plan.total)} back in your wallet · now ${formatMoney(walletBalance())}`);
+    refreshActivePage();
+  }
+
+  function undoWithdraw() {
+    const u = lastWithdraw;
+    if (!u) return;
+    // Money spent since the withdrawal can't be put back into jars it no longer covers.
+    if (walletBalance() < u.total - 0.005) {
+      toast(`Only ${formatMoney(walletBalance())} is free now — can't put ${formatMoney(u.total)} back.`);
+      return;
+    }
+    u.jars.forEach(({ id, saved }) => { const g = goals.find(x => x.id === id); if (g) g.saved = saved; });
+    fundingLog = fundingLog.filter(e => !u.fundingEntries.includes(e));
+    if (u.savingsEntry) savingsLog = savingsLog.filter(e => e !== u.savingsEntry);
+    saveGoals(goals); saveFundingLog(); saveSavings();
+    lastWithdraw = null;
+    toast(`Put back · ${formatMoney(u.total)} is in your jars and savings again`);
+    refreshActivePage();
+  }
+
+  document.getElementById('withdrawAll').addEventListener('click', openWithdraw);
+  document.getElementById('withdrawUndo').addEventListener('click', undoWithdraw);
+  document.getElementById('withdrawCancel').addEventListener('click', closeWithdraw);
+  document.getElementById('withdrawConfirm').addEventListener('click', doWithdraw);
+  withdrawOverlay.addEventListener('click', e => { if (e.target === withdrawOverlay) closeWithdraw(); });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && withdrawOverlay.classList.contains('open')) closeWithdraw();
   });
 
   /* ---------- photo ---------- */
